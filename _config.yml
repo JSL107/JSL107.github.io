@@ -7,12 +7,12 @@ url: "flexton.netlify.com" # the base hostname & protocol for your site, e.g. ht
 author-name:    JuneSeok Lee
 author-image:   1.jpg
 author-job:     Junior Back-End Developer
-author-email:   juneseok0107@naver.com # Add your email for contant form.
+author-email:   juneseok81@gmail.com # Add your email for contant form.
 author-twitter: # Add your twitter account
 about-author:   I am a web developer focusing on Back-End development. Always hungry to keep learning.
 
 # Social settings
-social-twitter:   _
+social-twitter:
 social-facebook:
 social-github:    JSL107
 social-pinterest: 
