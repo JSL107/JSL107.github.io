@@ -1,12 +1,11 @@
 ---
 layout: post
-title: "React SPA"
-date: 2022-02-28 12:12:18 +0200
+title: React SPA
 image: React-SPA.png
-tags: [SPA, React, Web]
-categories: Web
+date: 2022-02-28 13:35:20 +0900
+tags: [WEB ,React, SPA]
+categories: WEB
 ---
-
 # React SPA?
 
 ## SPA란 ?
