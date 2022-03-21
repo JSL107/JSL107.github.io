@@ -4,7 +4,7 @@ title: React SPA
 image: React-SPA.png
 date: 2022-02-28 13:35:20 +0900
 tags: [WEB ,React, SPA]
-categories: WEB
+categories: web
 ---
 # React SPA?
 

@@ -9,7 +9,7 @@ author-image:   1.jpg
 author-job:     Junior Back-End Developer
 author-email:   juneseok81@gmail.com # Add your email for contant form.
 author-twitter: # Add your twitter account
-about-author:   I am a web developer focusing on Back-End development. Always hungry to keep learning.
+about-author:   I'm a Junior web developer focusing on Back-End development. Always hungry to keep learning.
 
 # Social settings
 social-twitter:
@@ -28,7 +28,7 @@ mailchimp: # Add your MailChimp form identifier. For example - blogenjoyfreedom.
 google-analytics: # Add your identifier. For example UA-99631805-1
 
 # Comment Section (Disqus)
-disqus-identifier: mr-brown # Add your shortname for Disqus Comment. For example mr-brown
+disqus-identifier: JSL107 # Add your shortname for Disqus Comment. For example mr-brown
 
 # Build settings
 markdown: kramdown
@@ -51,3 +51,13 @@ exclude:
   - Gemfile
   - Gemfile.lock
   - vendor
+  - dev-container.sh
+
+# # Category
+# category_archive:
+#   type: liquid
+#   path: /categories/
+
+# tag_archive:
+#   type: liquid
+#   path: /tags/

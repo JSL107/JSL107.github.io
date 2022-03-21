@@ -4,7 +4,7 @@ title: "React Basic"
 date: 2022-03-02 12:19:18 +0900
 image: logo-react.png
 tags: [Summary, React, Web]
-categories: Web
+categories: web
 ---
 
 # React 기초

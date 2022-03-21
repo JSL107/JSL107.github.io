@@ -4,7 +4,7 @@ title: "State and Life Cycle"
 date: 2022-03-02 17:19:18 +0900
 image: logo-react.png
 tags: [Summary, React, Web]
-categories: Web
+categories: web
 ---
 # State and Life cycle
 

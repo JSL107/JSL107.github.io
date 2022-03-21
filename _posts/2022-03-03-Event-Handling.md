@@ -4,7 +4,7 @@ title: "Event Handling"
 date: 2022-03-03 17:50:18 +0900
 image: logo-react.png
 tags: [Summary, React, Web]
-categories: Web
+categories: web
 ---
 # Event Handling
 

@@ -4,7 +4,7 @@ title: "element 렌더링 & Components와 Props"
 date: 2022-03-02 17:19:18 +0900
 image: logo-react.png
 tags: [Summary, React, Web]
-categories: Web
+categories: web
 ---
 # element 렌더링 & Components와 Props
 
