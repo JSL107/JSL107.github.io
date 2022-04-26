@@ -17,7 +17,7 @@ categories: algorithm
 - n은 2이상 1000000이하의 자연수입니다.
 
 ### 입출력 예
-[exInput.png](../_site/images/exInput.png)
+[exInput.png](/images/algorithm/exInput.png)
 
 ### 입출력 예 설명
 입출력 예 #11부터 10 사이의 소수는 [2,3,5,7] 4개가 존재하므로 4를 반환
@@ -52,7 +52,7 @@ int count=0;
 ```
 
 ### 에라토스테네스의 체
-![sosu.gif](../_site/images/sosu.gif)
+![sosu.gif](/images/algorithm/sosu.gif)
 
 에라토스테네스의 체는 가장 먼저 소수를 판별할 범위만큼 배열을 할당하여, 해당하는 값을 넣어주고, 이후에 하나씩 지워나가는 방법을 이용한다.
 1. 배열을 생성하여 초기화한다.
