@@ -1,7 +1,7 @@
 ---
 layout: post
 title: React SPA
-image: React-SPA.png
+image: logo-react.png
 date: 2022-02-28 13:35:20 +0900
 tags: [WEB ,React, SPA]
 categories: web
@@ -12,7 +12,7 @@ categories: web
 
 ‘Single Page Application’ 의 약어로 한 개의 페이지로 이루어진 애플리케이션을 뜻한다.
 
-![Untitled](/images/React-SPA.png)
+![Untitled](/images/react/React-SPA.png)
 
 일반 페이지 경우 Client/Web Browser(Front)가 Server(Back-End)에게 html, javascript, css등 화면에 보여줄 데이터를 요청하고, 서버는 요청된 파일을 client에게 뿌려주는 형태였다면
 
