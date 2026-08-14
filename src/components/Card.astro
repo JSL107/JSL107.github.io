@@ -1,31 +1,69 @@
 ---
 import type { CollectionEntry } from "astro:content";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { getPostUrl } from "@/utils/getPostPaths";
 import { toTransitionName } from "@/utils/toTransitionName";
-import Datetime from "./Datetime.astro";
+import { topicTags } from "@/utils/archiveFilter";
+import config from "@/config";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 type Props = {
   variant?: "h2" | "h3";
 } & CollectionEntry<"posts">;
 
 const { variant: Heading = "h2", id, data, filePath } = Astro.props;
+const { title, description, tags, pubDatetime, modDatetime, timezone: postTimezone } = data;
 
-const { title, description, ...props } = data;
+// 목록에서는 글 주제만 보여준다. archive/summary 는 모든 옛 글에 붙어 있어 구분에 도움이 안 된다.
+const visibleTags = topicTags(tags).slice(0, 3);
+
+const date = dayjs(modDatetime ?? pubDatetime)
+  .tz(postTimezone ?? config.site.timezone)
+  .format("YYYY.MM.DD");
 ---
 
-<li class="my-6">
+<li class="my-3">
   <a
     href={getPostUrl(id, filePath, Astro.currentLocale)}
-    class:list={[
-      "text-accent inline-block text-lg font-medium",
-      "decoration-dashed underline-offset-4 hover:underline",
-      "focus-visible:no-underline focus-visible:underline-offset-0",
-    ]}
+    class="group border-border hover:border-accent/60 hover:bg-muted/40 focus-visible:outline-accent block rounded-lg border px-4 py-3.5 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2"
   >
-    <Heading transition:name={toTransitionName(id)}>
-      {title}
-    </Heading>
+    <div class="flex items-baseline justify-between gap-3">
+      <Heading
+        transition:name={toTransitionName(id)}
+        class="group-hover:text-accent text-base font-semibold transition-colors sm:text-lg"
+      >
+        {title}
+      </Heading>
+      <time
+        datetime={pubDatetime.toISOString()}
+        class="app-meta text-muted-foreground shrink-0 text-xs"
+      >
+        {date}
+      </time>
+    </div>
+
+    {
+      description && (
+        <p class="text-muted-foreground mt-1.5 line-clamp-2 text-sm">
+          {description}
+        </p>
+      )
+    }
+
+    {
+      visibleTags.length > 0 && (
+        <div class="mt-2.5 flex flex-wrap gap-1.5">
+          {visibleTags.map(tag => (
+            <span class="app-meta bg-muted text-muted-foreground group-hover:text-foreground rounded px-1.5 py-0.5 text-[11px] transition-colors">
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )
+    }
   </a>
-  <Datetime {...props} />
-  <p>{description}</p>
 </li>

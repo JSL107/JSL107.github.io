@@ -8,6 +8,7 @@ import Tag from "@/components/Tag.astro";
 import { getPostSlug, getPostUrl } from "@/utils/getPostPaths";
 import { getSortedPosts } from "@/utils/getSortedPosts";
 import { slugifyStr } from "@/utils/slugify";
+import { topicTags } from "@/utils/archiveFilter";
 import { toTransitionName } from "@/utils/toTransitionName";
 import EditPost from "./_components/EditPost.astro";
 import ShareLinks from "./_components/ShareLinks.astro";
@@ -115,12 +116,12 @@ const ogImage = ogImageUrl
   >
     <h1
       style={{ viewTransitionName: toTransitionName(post.id) }}
-      class="text-accent inline-block text-2xl font-bold sm:text-3xl"
+      class="text-3xl leading-tight font-bold tracking-tight text-balance sm:text-4xl"
     >
       {title}
     </h1>
 
-    <div class="my-2 flex items-center gap-2">
+    <div class="mt-3 mb-2 flex items-center gap-2">
       <Datetime {pubDatetime} {modDatetime} {timezone} size="lg" />
       <span
         aria-hidden="true"
@@ -133,6 +134,13 @@ const ogImage = ogImageUrl
       </span>
       <EditPost {hideEditPost} {post} class="max-sm:hidden" />
     </div>
+
+    {/* 무엇에 관한 글인지 본문보다 먼저 알리려고 태그를 제목 아래에 둔다. */}
+    <ul class="border-border mt-3 flex flex-wrap gap-2 border-b pb-5">
+      {topicTags(tags).map(tag => (
+        <Tag tag={slugifyStr(tag)} tagName={tag} size="sm" />
+      ))}
+    </ul>
 
     <article
       id="article"
@@ -150,10 +158,6 @@ const ogImage = ogImageUrl
     <EditPost class="sm:hidden" {hideEditPost} {post} />
 
     <BackToTopButton />
-
-    <ul class="mt-4 mb-8 flex flex-wrap gap-4 sm:my-8">
-      {tags.map(tag => <Tag tag={slugifyStr(tag)} tagName={tag} size="sm" />)}
-    </ul>
 
     <ShareLinks />
 
