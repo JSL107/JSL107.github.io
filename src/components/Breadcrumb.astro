@@ -4,6 +4,13 @@ import { stripBase, stripLocale } from "@/utils/withBase";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
+type Props = {
+  /** 아래 본문이 좁은 읽기 폭이면 길잡이도 같은 폭에 맞춘다. */
+  narrow?: boolean;
+};
+
+const { narrow = false } = Astro.props;
+
 const locale = Astro.currentLocale ?? config.site.lang;
 const t = useTranslations(locale);
 
@@ -57,7 +64,10 @@ if (breadcrumbList[0] === "tags" && !isNaN(Number(breadcrumbList[2]))) {
 }
 ---
 
-<nav class="app-layout mt-8 mb-1" aria-label="breadcrumb">
+<nav
+  class:list={[narrow ? "app-read" : "app-layout", "mt-8 mb-1"]}
+  aria-label="breadcrumb"
+>
   <ul
     class="flex flex-wrap items-center gap-x-1 font-light [&>li:not(:last-child)>a]:hover:opacity-100"
   >

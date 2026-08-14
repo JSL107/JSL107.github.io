@@ -23,12 +23,20 @@
 }
 
 @utility max-w-app {
-  /* 애플 본문 폭에 맞춘다. 3xl(768px)은 한 컬럼 블로그용이라 좁다. */
+  /* 카드를 두 장 나란히 놓는 목록 화면 기준. 본문을 읽는 화면에는 app-read 를 쓴다. */
   @apply max-w-5xl;
 }
 
 @utility app-layout {
   @apply max-w-app mx-auto w-full px-4;
+}
+
+@utility app-read {
+  /*
+   * 읽는 화면의 폭. 목록 폭(1024px)을 그대로 쓰면 한 줄에 한글이 70~90자 들어가
+   * 줄 끝에서 다음 줄 첫머리를 되찾기 어렵다. 이 폭이면 한 줄에 40자 안팎이다.
+   */
+  @apply mx-auto w-full max-w-3xl px-4;
 }
 
 @utility active-nav {

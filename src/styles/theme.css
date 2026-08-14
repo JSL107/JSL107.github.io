@@ -14,8 +14,9 @@
    * Apple SD Gothic Neo 가, 그 밖에서는 각 OS 의 기본 한글 서체가 잡힌다.
    * 웹폰트를 받지 않으므로 글자가 늦게 그려지며 튀는 일도 없다.
    */
-  --font-app: -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", system-ui, sans-serif;
+  --font-app:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo",
+    "Pretendard", "Malgun Gothic", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
 }
 
@@ -62,13 +63,21 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* 한글은 줄 사이가 넉넉해야 읽힌다. 낱말이 어중간하게 잘리지 않게 한다. */
+  /*
+   * 한글은 줄 사이가 넉넉해야 읽힌다. 낱말이 어중간하게 잘리지 않게 한다.
+   *
+   * break-word 가 아니라 anywhere 를 쓰는 이유 — break-word 는 글자를 실제로 그릴 때만
+   * 낱말을 자르고, "이 요소가 최소 얼마까지 좁아질 수 있나"를 계산할 때는 무시된다.
+   * 그래서 파일 경로처럼 띄어쓰기 없는 긴 문자열이 카드 하나에 들어오면 그 카드가
+   * 좁아지길 거부하고, 폰 화면에서 페이지 전체가 가로로 밀려 제목이 잘린다.
+   * anywhere 는 그 계산에도 반영되므로 카드가 화면 폭까지 줄어든다.
+   */
   body {
     font-size: 17px;
     line-height: 1.6;
     letter-spacing: -0.011em;
     word-break: keep-all;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
   }
 
   /* 애플 조판의 인상은 큰 제목에서 온다 — 굵고, 자간을 좁히고, 줄간격을 붙인다. */

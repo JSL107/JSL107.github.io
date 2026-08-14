@@ -36,10 +36,15 @@ const date = dayjs(modDatetime ?? pubDatetime)
 <li>
   <a
     href={getPostUrl(id, filePath, Astro.currentLocale)}
-    class="group bg-background focus-visible:outline-accent block h-full rounded-2xl px-6 py-5 focus-visible:outline-2 focus-visible:outline-offset-2"
+    class="group bg-surface focus-visible:outline-accent block h-full rounded-2xl px-6 py-5 focus-visible:outline-2 focus-visible:outline-offset-2"
   >
-    <p class="app-meta text-muted-foreground text-xs">
-      <time datetime={pubDatetime.toISOString()}>{date}</time>
+    {
+      /* 고정폭은 기계가 찍은 날짜에만. 태그는 사람이 붙인 분류라 본문 서체로 둔다. */
+    }
+    <p class="text-muted-foreground text-xs">
+      <time class="app-meta" datetime={pubDatetime.toISOString()}>
+        {date}
+      </time>
       {
         visibleTags.length > 0 && (
           <span>

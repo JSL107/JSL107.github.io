@@ -85,7 +85,8 @@ const listUrl = getRelativeLocaleUrl(
       </div>
     </section>
 
-    <section class="bg-surface border-border border-y px-4 py-20 sm:py-24">
+    {/* 배경은 바탕색 그대로 두고, 카드만 흰 면으로 띄워 층을 만든다. */}
+    <section class="border-border border-y px-4 py-20 sm:py-24">
       <div class="app-layout">
         {
           featuredPosts.length > 0 && (
@@ -149,9 +150,11 @@ const listUrl = getRelativeLocaleUrl(
       <h2 class="text-[clamp(1.5rem,3.4vw,2.25rem)] font-semibold">
         요즘은 제 일을 대신할 것들을 만듭니다
       </h2>
-      <p class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg sm:text-xl">
+      <p
+        class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg sm:text-xl"
+      >
         Slack에서 부르면 코드를 리뷰하고 하루를 회고해주는 에이전트들을 만들어
-        두고 일을 떠넘기는 중입니다. 잘 된 것보다
+        두고 일을 떠넘기는 중입니다. 잘 된 것보다{" "}
         <span class="text-foreground">틀렸다가 알아낸 것</span>이 더 많습니다.
       </p>
 
