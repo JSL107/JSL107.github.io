@@ -64,11 +64,22 @@ const listUrl = getRelativeLocaleUrl(
 
   {/* 섹션마다 배경을 갈아 끼우려고 main 에서 폭 제한을 걷어낸다. */}
   <main id="main-content" data-layout="index" data-home-path={homePath}>
-    <section class="px-4 py-24 text-center sm:py-32">
-      <h1
-        class="mx-auto max-w-4xl text-[clamp(2.5rem,7vw,4.5rem)] font-semibold"
-      >
-        증상 말고<br />원인을 고칩니다
+    <section class="px-4 py-16 text-center sm:py-20">
+      {
+        /*
+        제목이 스스로 주제를 보여주게 한다 — 증상은 뒤로 물러나고 원인이 앞으로 나온다.
+        화면 낭독기에는 여전히 "증상 말고 원인을 고칩니다" 한 문장이다.
+      */
+      }
+      <h1 class="mx-auto max-w-4xl font-semibold">
+        <span
+          class="text-muted-foreground block text-[clamp(1.25rem,3vw,2rem)]"
+        >
+          증상 말고
+        </span>
+        <span class="mt-1 block text-[clamp(2.5rem,7vw,4.5rem)]">
+          원인을 고칩니다
+        </span>
       </h1>
       <p
         class="text-muted-foreground mx-auto mt-6 max-w-2xl text-[clamp(1.125rem,2.4vw,1.5rem)] leading-snug"
@@ -86,7 +97,7 @@ const listUrl = getRelativeLocaleUrl(
     </section>
 
     {/* 배경은 바탕색 그대로 두고, 카드만 흰 면으로 띄워 층을 만든다. */}
-    <section class="border-border border-y px-4 py-20 sm:py-24">
+    <section class="border-border border-y px-4 py-16 sm:py-20">
       <div class="app-layout">
         {
           featuredPosts.length > 0 && (
