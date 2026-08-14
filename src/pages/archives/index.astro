@@ -53,7 +53,9 @@ const monthFormatter = new Intl.DateTimeFormat(locale, { month: "long" });
               .sort(([monthA], [monthB]) => Number(monthB) - Number(monthA))
               .map(([month, monthGroup]) => (
                 <div class="flex flex-col sm:flex-row">
-                  <div class="mt-6 min-w-36 text-lg sm:my-6">
+                  {/* 월 이름을 카드 첫 줄(날짜)과 같은 높이에 세운다. 카드 위 여백 20px 에
+                      글자 크기 차이를 더해 맞춘 값 — 24px 이면 한 줄 아래로 내려가 보인다. */}
+                  <div class="mt-6 min-w-36 text-lg sm:mt-4 sm:mb-6">
                     <span class="font-bold">
                       {monthFormatter.format(
                         new Date(2000, Number(month) - 1, 1)
@@ -63,7 +65,9 @@ const monthFormatter = new Intl.DateTimeFormat(locale, { month: "long" });
                       {monthGroup.length}
                     </sup>
                   </div>
-                  <ul class="min-w-0 flex-1">
+                  {/* 카드는 모서리가 둥글다 — 사이를 벌리지 않으면 둥근 면들이 맞물려
+                      목록 좌우에 톱니처럼 홈이 파인다. 홈 화면 격자와 같은 간격을 쓴다. */}
+                  <ul class="grid min-w-0 flex-1 gap-4">
                     {monthGroup
                       .sort(
                         (a, b) =>

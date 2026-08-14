@@ -15,7 +15,8 @@ export default defineAstroPaperConfig({
   },
   posts: {
     perPage: 8,
-    perIndex: 5,
+    // 홈은 카드를 두 장씩 나란히 놓는다 — 홀수면 마지막 줄 오른쪽이 빈 칸으로 남는다.
+    perIndex: 4,
     scheduledPostMargin: 15 * 60 * 1000,
   },
   features: {

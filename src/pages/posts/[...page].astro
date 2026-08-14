@@ -60,7 +60,7 @@ const isEmpty = page.data.length === 0;
           )}
         </div>
       ) : (
-        <ul>
+        <ul class="grid gap-4">
           {page.data.map(data => (
             <Card {...data} />
           ))}

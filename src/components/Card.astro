@@ -33,10 +33,21 @@ const date = dayjs(modDatetime ?? pubDatetime)
   .format("YYYY.MM.DD");
 ---
 
+{
+  /* 이 카드를 담는 목록에는 gap 을 줄 것 — 붙여 놓으면 둥근 모서리끼리 맞물려
+     목록 좌우에 톱니처럼 홈이 파인다. */
+}
 <li>
+  {
+    /*
+     * 밝은 화면에서 바탕(#f5f5f7)과 카드(#fff)의 밝기 차이는 거의 없다. 색만으로는
+     * 카드가 떠 보이지 않으므로 옅은 그림자로 층을 만든다. 어두운 화면은 바탕이
+     * 순검정이라 색 차이만으로 이미 구분되고, 검정 위 검은 그림자는 보이지도 않는다.
+     */
+  }
   <a
     href={getPostUrl(id, filePath, Astro.currentLocale)}
-    class="group bg-surface focus-visible:outline-accent block h-full rounded-2xl px-6 py-5 focus-visible:outline-2 focus-visible:outline-offset-2"
+    class="group bg-surface focus-visible:outline-accent block h-full rounded-2xl px-6 py-5 shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 dark:shadow-none"
   >
     {
       /* 고정폭은 기계가 찍은 날짜에만. 태그는 사람이 붙인 분류라 본문 서체로 둔다. */
