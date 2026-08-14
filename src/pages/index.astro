@@ -52,7 +52,25 @@ for (const post of archivedPosts) {
 }
 
 const archivesUrl = getRelativeLocaleUrl(locale, "archives/");
-const aboutUrl = getRelativeLocaleUrl(locale, "about/");
+
+/*
+ * 첫 화면에서 이 블로그가 무엇을 적는 곳인지 설명 대신 실물로 보여주는 보기.
+ * 위가 눈에 보이던 증상, 아래가 실제로 고쳐야 했던 자리다. 전부 겪은 것들.
+ */
+const traces = [
+  {
+    symptom: "목록 개수가 실제 데이터와 안 맞는다",
+    cause: "조건 하나를 세 군데에서 서로 다르게 세고 있었다",
+  },
+  {
+    symptom: "새벽에 서비스가 멈췄다",
+    cause: "1년에 한 번인 인증서 갱신을 잊었다",
+  },
+  {
+    symptom: "연동한 API가 조용히 빈 값을 준다",
+    cause: "남이 준 응답을 그대로 믿고 있었다",
+  },
+];
 const listUrl = getRelativeLocaleUrl(
   locale,
   recentPosts.length === 0 ? "archives/" : "posts/"
@@ -64,7 +82,7 @@ const listUrl = getRelativeLocaleUrl(
 
   {/* 섹션마다 배경을 갈아 끼우려고 main 에서 폭 제한을 걷어낸다. */}
   <main id="main-content" data-layout="index" data-home-path={homePath}>
-    <section class="px-4 py-16 text-center sm:py-20">
+    <section class="px-4 py-12 text-center sm:py-16">
       {
         /*
         제목이 스스로 주제를 보여주게 한다 — 증상은 뒤로 물러나고 원인이 앞으로 나온다.
@@ -88,12 +106,39 @@ const listUrl = getRelativeLocaleUrl(
         무엇이 왜 고장났고 어떻게 고쳤는지를 적습니다.
       </p>
 
-      <div
-        class="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-lg"
+      {
+        /*
+        제목이 말한 것을 화면에서 한 번 더 보여준다 — 위가 증상, 아래가 원인.
+        가운데로 모인 문단 사이에서 유일하게 왼쪽으로 정렬해 눈이 여기서 멈추게 한다.
+
+        고정폭 서체는 쓰지 않는다 — 한글은 낱자 폭이 라틴 글자에 맞춰 늘어나서
+        글자 사이가 성기게 벌어진다. 기록처럼 보이는 인상은 └ 기호와 두 줄 구조가 낸다.
+      */
+      }
+      <ul
+        class="mx-auto mt-10 grid max-w-lg gap-5 text-start text-[15px] sm:text-base"
       >
+        {
+          traces.map(({ symptom, cause }) => (
+            <li>
+              <p class="text-muted-foreground">{symptom}</p>
+              <p class="mt-1 flex gap-2">
+                <span class="text-accent select-none" aria-hidden="true">
+                  └
+                </span>
+                <span>{cause}</span>
+              </p>
+            </li>
+          ))
+        }
+      </ul>
+
+      {
+        /* 소개는 위 메뉴에 이미 있다 — 첫 화면의 할 일은 글로 보내는 것 하나다. */
+      }
+      <p class="mt-10 text-lg">
         <a class="link-arrow" href={archivesUrl}>지난 글 보기</a>
-        <a class="link-arrow" href={aboutUrl}>더 알아보기</a>
-      </div>
+      </p>
     </section>
 
     {/* 배경은 바탕색 그대로 두고, 카드만 흰 면으로 띄워 층을 만든다. */}
@@ -137,8 +182,8 @@ const listUrl = getRelativeLocaleUrl(
                 그동안 남긴 기록
               </h2>
               <p class="text-muted-foreground mx-auto mt-4 max-w-2xl text-center text-lg sm:text-xl">
-                새 글은 준비 중입니다. 그 사이 2018~2022년에 공부하며 적어둔
-                것들을 놓아둡니다.
+                2018~2022년, 처음 서버와 알고리즘을 배우면서 남긴{" "}
+                {archivedPosts.length}편입니다. 새 글은 여기에 이어서 올려요.
               </p>
               <ul class="mt-10 grid gap-4 sm:grid-cols-2">
                 {archivePeek.map(data => (
