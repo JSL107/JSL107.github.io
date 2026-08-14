@@ -58,32 +58,16 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
   },
+  // 화면 서체는 시스템 폰트를 그대로 쓴다(theme.css). 여기 남은 항목은
+  // OG 이미지 생성기(satori)가 ttf 파일을 직접 읽어야 해서 유지하는 것뿐이다.
   fonts: [
-    // 본문·제목용 한글 서체. 고정폭을 본문에 쓰면 한글 자간이 벌어져 읽기 나쁘다.
-    {
-      name: "IBM Plex Sans KR",
-      cssVariable: "--font-sans-kr",
-      provider: fontProviders.google(),
-      fallbacks: [
-        "Apple SD Gothic Neo",
-        "Pretendard",
-        "Malgun Gothic",
-        "sans-serif",
-      ],
-      weights: [400, 500, 600, 700],
-      styles: ["normal"],
-      // 한글 폰트는 Google Fonts 가 ttf 를 주지 않는다 (요청하면 CannotFetchFontFile).
-      formats: ["woff2"],
-    },
-    // 날짜·태그·코드 등 기계가 찍은 값에만 쓰는 고정폭.
-    // OG 이미지 생성기(satori)가 ttf 만 읽으므로 여기서는 ttf 를 반드시 남긴다.
     {
       name: "Google Sans Code",
       cssVariable: "--font-google-sans-code",
       provider: fontProviders.google(),
       fallbacks: ["monospace"],
-      weights: [400, 500, 600, 700],
-      styles: ["normal", "italic"],
+      weights: [400, 700],
+      styles: ["normal"],
       formats: ["woff", "ttf"],
     },
   ],

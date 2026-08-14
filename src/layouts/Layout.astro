@@ -44,11 +44,7 @@ const rssHref = getRelativeLocaleUrl(
     <link rel="canonical" href={canonicalURL} />
     <meta name="generator" content={Astro.generator} />
 
-    <!-- Font — 본문(한글) 먼저 preload, 고정폭은 뒤따라 받는다 -->
-    <Font
-      cssVariable="--font-sans-kr"
-      preload={[{ subset: "korean", weight: 400, style: "normal" }]}
-    />
+    <!-- 화면 서체는 시스템 폰트라 받을 것이 없다. OG 이미지용 폰트만 등록한다. -->
     <Font cssVariable="--font-google-sans-code" />
 
     <!-- Primary meta -->

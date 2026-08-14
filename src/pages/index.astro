@@ -1,7 +1,6 @@
 ---
 import { getCollection } from "astro:content";
 import { getRelativeLocaleUrl } from "astro:i18n";
-import IconRss from "@/assets/icons/IconRss.svg";
 import IconArrowRight from "@/assets/icons/IconArrowRight.svg";
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
@@ -13,10 +12,8 @@ import { getSortedPosts } from "@/utils/getSortedPosts";
 import {
   excludeArchived,
   isArchived,
-  NOISE_TAGS,
   topicTags,
 } from "@/utils/archiveFilter";
-import { slugifyStr } from "@/utils/slugify";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
@@ -60,25 +57,6 @@ for (const post of archivedPosts) {
   if (archivePeek.length >= postsConfig.perIndex) break;
 }
 
-// 무엇에 대해 써왔는지를 글 목록보다 먼저 보여준다. 32편을 하나씩 훑게 하지 않기 위해서.
-const topicCounts = new Map<string, number>();
-for (const post of allSorted) {
-  for (const tag of post.data.tags) {
-    if (NOISE_TAGS.has(tag)) continue;
-    topicCounts.set(tag, (topicCounts.get(tag) ?? 0) + 1);
-  }
-}
-const topicEntries = [...topicCounts.entries()].sort(
-  (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
-);
-const topTopicCount = topicEntries[0]?.[1] ?? 1;
-const topics = topicEntries.map(([tag, count]) => ({
-  tag,
-  count,
-  slug: slugifyStr(tag),
-  // 가장 많이 쓴 주제를 100% 로 두고 나머지를 그에 견줘 채운다. 숫자만으로는 비교가 안 된다.
-  ratio: Math.round((count / topTopicCount) * 100),
-}));
 ---
 
 <Layout>
@@ -89,112 +67,53 @@ const topics = topicEntries.map(([tag, count]) => ({
     data-home-path={homePath}
     class="app-layout my-1"
   >
-    <section id="hero" class="border-border border-b pt-8 pb-6">
-      <h1
-        class="mt-4 mb-5 text-4xl leading-tight font-bold tracking-tight sm:mt-8 sm:text-5xl"
-      >
+    <section id="hero" class="pt-16 pb-14 sm:pt-24 sm:pb-20">
+      <h1 class="text-[2.6rem] font-semibold sm:text-6xl">
         서버 만들고,<br />AI한테 제 일 시킵니다
       </h1>
 
-      <!-- 이 블로그의 실제 수치. 백엔드 하는 사람의 상태 한 줄. -->
-      <dl
-        class="app-meta border-border text-muted-foreground mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 border-y py-2 text-xs sm:text-sm"
-      >
-        <div class="flex items-baseline gap-1.5">
-          <dt>글</dt>
-          <dd class="text-accent font-semibold">{sortedPosts.length}</dd>
-        </div>
-        <span aria-hidden="true" class="opacity-40">·</span>
-        <div class="flex items-baseline gap-1.5">
-          <dt>지난 기록</dt>
-          <dd class="text-accent font-semibold">{archivedPosts.length}</dd>
-        </div>
-        {
-          archiveSpan && (
-            <>
-              <span aria-hidden="true" class="opacity-40">
-                ·
-              </span>
-              <div class="flex items-baseline gap-1.5">
-                <dt class="sr-only">기록 기간</dt>
-                <dd>{archiveSpan}</dd>
-              </div>
-            </>
-          )
-        }
-        <a
-          target="_blank"
-          href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}rss.xml`}
-          class="hover:text-accent ms-auto inline-flex items-center gap-1"
-          title="RSS 구독"
-        >
-          <IconRss width={14} height={14} class="rtl:-rotate-90" />
-          RSS
-        </a>
-      </dl>
-
-      <p class="max-w-prose">
+      <p class="text-muted-foreground mt-6 max-w-2xl text-lg sm:text-xl">
         백엔드 개발자 이준석입니다. NestJS와 TypeScript로 서버를 만들고, 요즘은
-        Slack에서 부르면 리뷰하고 회고하고 코드까지 짜는 에이전트들을 만들어
-        두고 일을 떠넘기는 중입니다.
+        Slack에서 부르면 리뷰하고 회고하고 코드까지 짜는 에이전트들을 만들어 두고
+        일을 떠넘기는 중입니다.
       </p>
-      <p class="mt-3 max-w-prose">
-        여기에는 만들면서 알게 된 것들을 적습니다. 잘 된 것보다 <strong
-          class="font-semibold">틀렸다가 알아낸 것</strong
+      <p class="text-muted-foreground mt-4 max-w-2xl text-lg sm:text-xl">
+        여기에는 만들면서 알게 된 것들을 적습니다. 잘 된 것보다 <span
+          class="text-foreground">틀렸다가 알아낸 것</span
         >이 더 많을 예정입니다.
       </p>
+
       {
         socials.length > 0 && (
-          <div class="mt-4 flex max-sm:flex-col sm:items-center">
-            <div class="me-2 mb-1 whitespace-nowrap sm:mb-0">
-              {t.home.socialLinks}:
-            </div>
+          <div class="mt-8 flex items-center gap-3">
             <Socials />
           </div>
         )
       }
-    </section>
 
-    {
-      /* 글을 하나씩 훑지 않아도 무엇을 써왔는지 보이게. */
-      topics.length > 0 && (
-        <section id="topics" class="pt-10 pb-2">
-          <h2 class="text-muted-foreground app-meta text-xs tracking-wide uppercase">
-            무엇을 써왔나
-          </h2>
-          <ul class="mt-3 grid gap-1.5 sm:grid-cols-2">
-            {topics.map(({ tag, count, slug, ratio }) => (
-              <li>
-                <a
-                  href={getRelativeLocaleUrl(locale, `tags/${slug}/`)}
-                  class="topic border-border hover:border-accent/60 focus-visible:outline-accent relative flex items-baseline justify-between gap-3 overflow-hidden rounded-md border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-                  style={`--ratio:${ratio}%`}
-                >
-                  <span class="relative z-10">{tag}</span>
-                  <span class="app-meta text-muted-foreground relative z-10 text-xs">
-                    {count}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )
-    }
+      <!-- 제품 스펙처럼 아래에 조용히. 수치는 글이 늘면 따라 바뀐다. -->
+      <p class="app-meta text-muted-foreground mt-10 text-xs">
+        글 {sortedPosts.length} · 지난 기록 {archivedPosts.length}
+        {archiveSpan && ` · ${archiveSpan}`} ·{" "}
+        <a
+          target="_blank"
+          href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}rss.xml`}
+          class="hover:text-foreground">RSS</a
+        >
+      </p>
+    </section>
 
     {
       featuredPosts.length > 0 && (
         <section
           id="featured"
           class:list={[
-            "pt-12 pb-6",
+            "pt-14 pb-6",
             { "border-border border-b": recentPosts.length > 0 },
           ]}
         >
-          <h2 class="text-2xl font-semibold tracking-wide">
-            {t.home.featured}
-          </h2>
-          <ul>
+          <h2 class="text-3xl font-semibold">{t.home.featured}</h2>
+          <ul class="mt-8 space-y-3">
             {featuredPosts.map(data => (
               <Card variant="h3" {...data} />
             ))}
@@ -205,11 +124,9 @@ const topics = topicEntries.map(([tag, count]) => ({
 
     {
       recentPosts.length > 0 && (
-        <section id="recent-posts" class="pt-12 pb-6">
-          <h2 class="text-2xl font-semibold tracking-wide">
-            {t.home.recentPosts}
-          </h2>
-          <ul>
+        <section id="recent-posts" class="border-border border-t pt-14 pb-6">
+          <h2 class="text-3xl font-semibold">{t.home.recentPosts}</h2>
+          <ul class="mt-8 space-y-3">
             {recentPosts.slice(0, postsConfig.perIndex).map(data => (
               <Card variant="h3" {...data} />
             ))}
@@ -221,15 +138,13 @@ const topics = topicEntries.map(([tag, count]) => ({
     {
       /* 새 글이 아직 없을 때는 첫 화면이 통째로 비므로, 지난 기록을 대신 보여준다. */
       recentPosts.length === 0 && archivedPosts.length > 0 && (
-        <section id="archive-peek" class="pt-12 pb-6">
-          <h2 class="text-2xl font-semibold tracking-tight">
-            그동안 남긴 기록
-          </h2>
-          <p class="text-muted-foreground mt-2 text-sm">
+        <section id="archive-peek" class="border-border border-t pt-14 pb-6">
+          <h2 class="text-3xl font-semibold">그동안 남긴 기록</h2>
+          <p class="text-muted-foreground mt-3 max-w-2xl text-lg">
             새 글은 준비 중입니다. 그 사이 2018~2022년에 공부하며 적어둔 것들을
             놓아둡니다.
           </p>
-          <ul>
+          <ul class="mt-8 space-y-3">
             {archivePeek.map(data => (
               <Card variant="h3" {...data} />
             ))}
@@ -238,7 +153,7 @@ const topics = topicEntries.map(([tag, count]) => ({
       )
     }
 
-    <div class="my-8 text-center">
+    <div class="mt-10 mb-4 text-center">
       <LinkButton
         href={getRelativeLocaleUrl(
           locale,
@@ -264,24 +179,3 @@ const topics = topicEntries.map(([tag, count]) => ({
   });
 </script>
 
-<style>
-  /* 주제 게이지: 가장 많이 쓴 주제 대비 비율만큼 배경을 채운다. */
-  .topic::before {
-    content: "";
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: 0;
-    width: var(--ratio, 0%);
-    background: var(--accent);
-    opacity: 0.1;
-    transition: opacity 0.15s ease;
-  }
-  .topic:hover::before {
-    opacity: 0.18;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .topic::before {
-      transition: none;
-    }
-  }
-</style>
