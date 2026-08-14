@@ -44,7 +44,15 @@ export default defineConfig({
       rehypePlugins: [rehypeCallouts],
     }),
     shikiConfig: {
-      themes: { light: "min-light", dark: "night-owl" },
+      /*
+       * 후보 10 개를 같은 코드로 재고 고른 값이다(주석 대비 · 4.5:1 미만 토큰 수).
+       *   min-light           1.76:1  11 개  ← 쓰던 것. 흰 배경 위 회색 주석이 안 읽혔다.
+       *   night-owl           3.87:1  11 개  ← 쓰던 것. 배경도 남색이라 사이트와 따로 놀았다.
+       *   github-light                 0 개
+       *   github-dark-default 6.15:1   0 개
+       * 옛 글은 강의 필기라 주석이 곧 설명 본문이다. 그게 안 보이면 글이 반만 남는다.
+       */
+      themes: { light: "github-light", dark: "github-dark-default" },
       defaultColor: false,
       wrap: false,
       transformers: [
