@@ -68,9 +68,17 @@ for (const post of allSorted) {
     topicCounts.set(tag, (topicCounts.get(tag) ?? 0) + 1);
   }
 }
-const topics = [...topicCounts.entries()]
-  .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-  .map(([tag, count]) => ({ tag, count, slug: slugifyStr(tag) }));
+const topicEntries = [...topicCounts.entries()].sort(
+  (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+);
+const topTopicCount = topicEntries[0]?.[1] ?? 1;
+const topics = topicEntries.map(([tag, count]) => ({
+  tag,
+  count,
+  slug: slugifyStr(tag),
+  // 가장 많이 쓴 주제를 100% 로 두고 나머지를 그에 견줘 채운다. 숫자만으로는 비교가 안 된다.
+  ratio: Math.round((count / topTopicCount) * 100),
+}));
 ---
 
 <Layout>
@@ -154,15 +162,16 @@ const topics = [...topicCounts.entries()]
           <h2 class="text-muted-foreground app-meta text-xs tracking-wide uppercase">
             무엇을 써왔나
           </h2>
-          <ul class="mt-3 flex flex-wrap gap-2">
-            {topics.map(({ tag, count, slug }) => (
+          <ul class="mt-3 grid gap-1.5 sm:grid-cols-2">
+            {topics.map(({ tag, count, slug, ratio }) => (
               <li>
                 <a
                   href={getRelativeLocaleUrl(locale, `tags/${slug}/`)}
-                  class="border-border hover:border-accent/60 hover:text-accent focus-visible:outline-accent inline-flex items-baseline gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+                  class="topic border-border hover:border-accent/60 focus-visible:outline-accent relative flex items-baseline justify-between gap-3 overflow-hidden rounded-md border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+                  style={`--ratio:${ratio}%`}
                 >
-                  <span>{tag}</span>
-                  <span class="app-meta text-muted-foreground text-[11px]">
+                  <span class="relative z-10">{tag}</span>
+                  <span class="app-meta text-muted-foreground relative z-10 text-xs">
                     {count}
                   </span>
                 </a>
@@ -254,3 +263,25 @@ const topics = [...topicCounts.entries()]
     }
   });
 </script>
+
+<style>
+  /* 주제 게이지: 가장 많이 쓴 주제 대비 비율만큼 배경을 채운다. */
+  .topic::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: var(--ratio, 0%);
+    background: var(--accent);
+    opacity: 0.1;
+    transition: opacity 0.15s ease;
+  }
+  .topic:hover::before {
+    opacity: 0.18;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .topic::before {
+      transition: none;
+    }
+  }
+</style>

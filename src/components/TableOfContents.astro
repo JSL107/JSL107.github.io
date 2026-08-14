@@ -1,0 +1,67 @@
+---
+import type { MarkdownHeading } from "astro";
+
+type Props = {
+  headings: MarkdownHeading[];
+};
+
+const { headings } = Astro.props;
+
+// h2·h3 만 목차로. h1 은 글 제목이고, h4 아래는 목차가 오히려 어지럽다.
+const items = headings.filter(
+  heading => heading.depth >= 2 && heading.depth <= 3
+);
+
+// 항목이 두어 개뿐이면 목차가 본문보다 눈에 띄어 방해만 된다.
+const shouldRender = items.length >= 3;
+---
+
+{
+  shouldRender && (
+    <details class="toc border-border bg-muted/30 mt-8 rounded-lg border px-4 py-3" open>
+      <summary class="app-meta text-muted-foreground hover:text-foreground cursor-pointer list-none text-xs tracking-wide uppercase transition-colors">
+        <span class="toc__marker" aria-hidden="true" />
+        목차 · {items.length}
+      </summary>
+      <nav aria-label="목차">
+        <ol class="mt-3 space-y-1.5 text-sm">
+          {items.map(item => (
+            <li class={item.depth === 3 ? "ps-4" : ""}>
+              <a
+                href={`#${item.slug}`}
+                class="hover:text-accent focus-visible:outline-accent text-muted-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                {item.text}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+    </details>
+  )
+}
+
+<style>
+  /* 기본 삼각형을 지우고 직접 그린다 — 브라우저마다 모양이 달라 정렬이 어긋난다. */
+  .toc summary::-webkit-details-marker {
+    display: none;
+  }
+  .toc__marker {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-inline-end: 0.4rem;
+    border-block: 0.3rem solid transparent;
+    border-inline-start: 0.4rem solid currentColor;
+    transition: transform 0.15s ease;
+    vertical-align: middle;
+  }
+  .toc[open] .toc__marker {
+    transform: rotate(90deg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .toc__marker {
+      transition: none;
+    }
+  }
+</style>
