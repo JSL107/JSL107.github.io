@@ -4,9 +4,6 @@ description: "Event Handling 정리 노트"
 pubDatetime: 2022-03-03T17:50:18+09:00
 tags: ["summary","react","web","archive"]
 ---
-
-# Event Handling
-
 - React의 이벤트는 소문자 대신 캐멀 케이스(camelCase)를 사용한다.
 - JSX를 사용하여 문자열이 아닌 함수로 이벤트 핸들러를 전달한다.
 - React에서는 false를 반환해도 기본 동작을 방지 할 수 없다.

@@ -10,7 +10,7 @@ import Socials from "@/components/Socials.astro";
 import Card from "@/components/Card.astro";
 import LinkButton from "@/components/LinkButton.astro";
 import { getSortedPosts } from "@/utils/getSortedPosts";
-import { excludeArchived } from "@/utils/archiveFilter";
+import { excludeArchived, isArchived } from "@/utils/archiveFilter";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
@@ -20,10 +20,41 @@ const locale = Astro.currentLocale ?? config.site.lang;
 const t = useTranslations(locale);
 
 const posts = await getCollection("posts");
-const sortedPosts = excludeArchived(getSortedPosts(posts));
+const allSorted = getSortedPosts(posts);
+const sortedPosts = excludeArchived(allSorted);
 const featuredPosts = sortedPosts.filter(({ data }) => data.featured);
 const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
+const archivedPosts = allSorted.filter(isArchived);
 const homePath = getRelativeLocaleUrl(locale, "");
+
+// 첫 화면 상태 줄에 쓰는 실제 수치. 글이 늘면 저절로 따라 바뀐다.
+const archiveDates = archivedPosts
+  .map(post => post.data.pubDatetime)
+  .sort((a, b) => a.getTime() - b.getTime());
+const yearMonth = (date: Date | undefined) =>
+  date
+    ? `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}`
+    : "";
+const archiveSpan =
+  archiveDates.length > 0
+    ? `${yearMonth(archiveDates[0])}–${yearMonth(archiveDates.at(-1))}`
+    : "";
+
+// 지난 기록 미리보기는 최신순으로 뽑으면 같은 시기에 몰아 쓴 알고리즘 풀이만 나열된다.
+// 주제(태그)가 겹치지 않게 골라 무엇을 공부했는지가 한눈에 보이게 한다.
+const GENERIC_TAGS = new Set(["archive", "summary", "lecture"]);
+const topicOf = (tags: string[]) =>
+  tags.find(tag => !GENERIC_TAGS.has(tag)) ?? "etc";
+
+const archivePeek: typeof archivedPosts = [];
+const seenTopics = new Set<string>();
+for (const post of archivedPosts) {
+  const topic = topicOf(post.data.tags);
+  if (seenTopics.has(topic)) continue;
+  seenTopics.add(topic);
+  archivePeek.push(post);
+  if (archivePeek.length >= postsConfig.perIndex) break;
+}
 ---
 
 <Layout>
@@ -35,39 +66,58 @@ const homePath = getRelativeLocaleUrl(locale, "");
     class="app-layout my-1"
   >
     <section id="hero" class="border-border border-b pt-8 pb-6">
-      <h1 class="my-4 inline-block text-4xl font-bold sm:my-8 sm:text-5xl">
-        안녕하세요
-      </h1>
-      <a
-        target="_blank"
-        href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}rss.xml`}
-        class="inline-block"
-        aria-label="RSS Feed"
-        title="RSS Feed"
+      <h1
+        class="mt-4 mb-5 text-4xl leading-tight font-bold tracking-tight sm:mt-8 sm:text-5xl"
       >
-        <IconRss
-          width={20}
-          height={20}
-          class="stroke-accent scale-125 stroke-3 rtl:-rotate-90"
-        />
-        <span class="sr-only">RSS Feed</span>
-      </a>
+        서버 만들고,<br />AI한테 제 일 시킵니다
+      </h1>
 
-      <p>
-        백엔드 개발자 이준석입니다. 주로 NestJS와 TypeScript로 서버를 만들고,
-        요즘은 AI 에이전트한테 제 일을 대신 시키는 실험을 하고 있습니다.
-      </p>
-      <p class="mt-2">
-        여기에는 만들면서 알게 된 것들을 적습니다. 잘 된 것보다 <strong
-          >틀렸다가 알아낸 것</strong
-        >이 더 많을 예정입니다. 2018~2022년에 공부하며 남긴 글은{" "}
-        <LinkButton
-          class="hover:text-accent underline decoration-dashed underline-offset-4"
-          href={getRelativeLocaleUrl(locale, "archives")}
+      <!-- 이 블로그의 실제 수치. 백엔드 하는 사람의 상태 한 줄. -->
+      <dl
+        class="app-meta border-border text-muted-foreground mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 border-y py-2 text-xs sm:text-sm"
+      >
+        <div class="flex items-baseline gap-1.5">
+          <dt>글</dt>
+          <dd class="text-accent font-semibold">{sortedPosts.length}</dd>
+        </div>
+        <span aria-hidden="true" class="opacity-40">·</span>
+        <div class="flex items-baseline gap-1.5">
+          <dt>지난 기록</dt>
+          <dd class="text-accent font-semibold">{archivedPosts.length}</dd>
+        </div>
+        {
+          archiveSpan && (
+            <>
+              <span aria-hidden="true" class="opacity-40">
+                ·
+              </span>
+              <div class="flex items-baseline gap-1.5">
+                <dt class="sr-only">기록 기간</dt>
+                <dd>{archiveSpan}</dd>
+              </div>
+            </>
+          )
+        }
+        <a
+          target="_blank"
+          href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}rss.xml`}
+          class="hover:text-accent ms-auto inline-flex items-center gap-1"
+          title="RSS 구독"
         >
-          지난 글
-        </LinkButton>{" "}
-        에 모아뒀습니다.
+          <IconRss width={14} height={14} class="rtl:-rotate-90" />
+          RSS
+        </a>
+      </dl>
+
+      <p class="max-w-prose">
+        백엔드 개발자 이준석입니다. NestJS와 TypeScript로 서버를 만들고, 요즘은
+        Slack에서 부르면 리뷰하고 회고하고 코드까지 짜는 에이전트들을 만들어
+        두고 일을 떠넘기는 중입니다.
+      </p>
+      <p class="mt-3 max-w-prose">
+        여기에는 만들면서 알게 된 것들을 적습니다. 잘 된 것보다 <strong
+          class="font-semibold">틀렸다가 알아낸 것</strong
+        >이 더 많을 예정입니다.
       </p>
       {
         socials.length > 0 && (
@@ -117,9 +167,34 @@ const homePath = getRelativeLocaleUrl(locale, "");
       )
     }
 
+    {
+      /* 새 글이 아직 없을 때는 첫 화면이 통째로 비므로, 지난 기록을 대신 보여준다. */
+      recentPosts.length === 0 && archivedPosts.length > 0 && (
+        <section id="archive-peek" class="pt-12 pb-6">
+          <h2 class="text-2xl font-semibold tracking-tight">
+            그동안 남긴 기록
+          </h2>
+          <p class="text-muted-foreground mt-2 text-sm">
+            새 글은 준비 중입니다. 그 사이 2018~2022년에 공부하며 적어둔 것들을
+            놓아둡니다.
+          </p>
+          <ul>
+            {archivePeek.map(data => (
+              <Card variant="h3" {...data} />
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
     <div class="my-8 text-center">
-      <LinkButton href={getRelativeLocaleUrl(locale, "posts")}>
-        {t.home.allPosts}
+      <LinkButton
+        href={getRelativeLocaleUrl(
+          locale,
+          recentPosts.length === 0 ? "archives" : "posts"
+        )}
+      >
+        {recentPosts.length === 0 ? "지난 글 전체 보기" : t.home.allPosts}
         <IconArrowRight class="inline-block rtl:-rotate-180" />
       </LinkButton>
     </div>

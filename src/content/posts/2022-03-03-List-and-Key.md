@@ -4,9 +4,6 @@ description: "List & Key 정리 노트"
 pubDatetime: 2022-03-03T17:50:18+09:00
 tags: ["summary","react","web","archive"]
 ---
-
-# List & Key
-
 ### 1. List
 
 - JavaScript에서의 리스트 변환

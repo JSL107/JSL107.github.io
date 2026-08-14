@@ -4,9 +4,6 @@ description: "Conditional Rendering 정리 노트"
 pubDatetime: 2022-03-03T17:50:18+09:00
 tags: ["summary","react","web","archive"]
 ---
-
-# Conditional Rendering
-
 - React에서는 원하는 동작을 캡슐화 하는 컴포넌트를 만들 수 있고 애플리케이션의 상태에 따라서 컴포넌트 중 몇 개 만을 렌더링 할 수 있다.
 
 ```jsx

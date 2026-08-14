@@ -4,9 +4,6 @@ description: "element 렌더링 & Components와 Props 정리 노트"
 pubDatetime: 2022-03-02T17:19:18+09:00
 tags: ["summary","react","web","archive"]
 ---
-
-# element 렌더링 & Components와 Props
-
 ### 1. element
 
 1. 의미

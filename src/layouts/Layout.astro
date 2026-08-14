@@ -44,11 +44,12 @@ const rssHref = getRelativeLocaleUrl(
     <link rel="canonical" href={canonicalURL} />
     <meta name="generator" content={Astro.generator} />
 
-    <!-- Font -->
+    <!-- Font — 본문(한글) 먼저 preload, 고정폭은 뒤따라 받는다 -->
     <Font
-      cssVariable="--font-google-sans-code"
-      preload={[{ subset: "latin", weight: 400, style: "normal" }]}
+      cssVariable="--font-sans-kr"
+      preload={[{ subset: "korean", weight: 400, style: "normal" }]}
     />
+    <Font cssVariable="--font-google-sans-code" />
 
     <!-- Primary meta -->
     <title>{title}</title>

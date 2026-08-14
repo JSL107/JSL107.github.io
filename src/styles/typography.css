@@ -13,8 +13,9 @@
       @apply text-foreground mb-3;
     }
 
+    /* 한글에는 진짜 이탤릭 자형이 없어 브라우저가 억지로 기울인다 — 무게로 구분한다. */
     h3 {
-      @apply italic;
+      @apply font-semibold;
     }
 
     p,
@@ -27,8 +28,9 @@
       @apply text-foreground;
     }
 
+    /* 본문색 + 점선 밑줄이면 링크인지 알아보기 어렵다. 색으로 먼저 알리고 밑줄은 얇게. */
     a {
-      @apply text-foreground hover:text-accent wrap-break-word decoration-dashed underline-offset-4 focus-visible:no-underline;
+      @apply text-accent hover:decoration-accent wrap-break-word decoration-1 underline-offset-4 opacity-95 hover:opacity-100 focus-visible:no-underline;
     }
 
     ul {

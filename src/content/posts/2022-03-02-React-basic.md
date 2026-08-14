@@ -4,8 +4,7 @@ description: "counterwithjs.html : 기존에 했던 Counter를 js를 이용하�
 pubDatetime: 2022-03-02T12:19:18+09:00
 tags: ["summary","react","web","archive"]
 ---
-
-# React 기초
+## React 기초
 
 counter_with_js.html : 기존에 했던 Counter를 js를 이용하여 re-rendering 구현
 

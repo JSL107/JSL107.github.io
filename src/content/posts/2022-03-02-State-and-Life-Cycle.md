@@ -4,9 +4,6 @@ description: "아래와 같이 components의 동작을 제어하는 두 method�
 pubDatetime: 2022-03-02T17:19:18+09:00
 tags: ["summary","react","web","archive"]
 ---
-
-# State and Life cycle
-
 ### 1. State
 
 1. state

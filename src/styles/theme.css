@@ -7,28 +7,50 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
-  --font-app: var(--font-google-sans-code);
+
+  /* 본문·제목은 한글 서체, 기계가 찍은 값(날짜·태그·코드)은 고정폭. */
+  --font-app: var(--font-sans-kr);
+  --font-mono: var(--font-google-sans-code);
 }
 
 /* Light theme values */
 :root,
 [data-theme="light"] {
-  --background: #fdfdfd;
-  --foreground: #282728;
-  --accent: #006cac;
+  --background: #fcfcfd;
+  --foreground: #1c1e21;
+  --accent: #0b6e6b;
   --accent-foreground: #ffffff;
-  --muted: #e6e6e6;
-  --muted-foreground: #6b7280;
-  --border: #ece9e9;
+  --muted: #eef0f2;
+  --muted-foreground: #5b6570;
+  --border: #e3e6e9;
 }
 
 /* Dark theme values */
 [data-theme="dark"] {
-  --background: #212737;
-  --foreground: #eaedf3;
-  --accent: #ff6b01;
-  --accent-foreground: #ffffff;
-  --muted: #343f60;
-  --muted-foreground: #afb9ca;
-  --border: #ab4b08;
+  --background: #15171b;
+  --foreground: #e8eaed;
+  --accent: #4fd1c5;
+  --accent-foreground: #10221f;
+  --muted: #24272d;
+  --muted-foreground: #9aa3ad;
+  --border: #2c3037;
+}
+
+@layer base {
+  /* 기계가 찍은 값에만 고정폭 — 날짜, 태그, 코드, 사이트 상태 줄. */
+  .font-mono,
+  code,
+  kbd,
+  pre,
+  samp,
+  time,
+  .app-meta {
+    font-family: var(--font-mono);
+  }
+
+  /* 한글 본문은 줄 사이가 넉넉해야 읽힌다. */
+  body {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
 }

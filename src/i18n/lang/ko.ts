@@ -34,8 +34,9 @@ export default {
     allPosts: "글 전체 보기",
   },
   footer: {
-    copyright: "저작권",
-    allRightsReserved: "All rights reserved.",
+    // Footer 가 "{copyright} © {연도}" · "{allRightsReserved}" 로 조립한다.
+    copyright: "이준석",
+    allRightsReserved: "글과 코드에 대한 권리는 글쓴이에게 있습니다.",
   },
   pages: {
     tagTitle: "태그",
