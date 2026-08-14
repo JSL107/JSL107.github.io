@@ -18,7 +18,10 @@ const shouldRender = items.length >= 3;
 
 {
   shouldRender && (
-    <details class="toc border-border bg-muted/30 mt-8 rounded-lg border px-4 py-3" open>
+    <details
+      class="toc border-border bg-muted/30 mt-8 rounded-lg border px-4 py-3"
+      open
+    >
       <summary class="app-meta text-muted-foreground hover:text-foreground cursor-pointer list-none text-xs tracking-wide uppercase transition-colors">
         <span class="toc__marker" aria-hidden="true" />
         목차 · {items.length}
