@@ -21,9 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 버전은 package.json 의 packageManager 필드를 따른다 (로컬과 CI 가 갈리지 않게).
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
