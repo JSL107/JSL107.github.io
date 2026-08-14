@@ -1,19 +1,13 @@
 ---
 import { getCollection } from "astro:content";
 import { getRelativeLocaleUrl } from "astro:i18n";
-import IconArrowRight from "@/assets/icons/IconArrowRight.svg";
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import Socials from "@/components/Socials.astro";
 import Card from "@/components/Card.astro";
-import LinkButton from "@/components/LinkButton.astro";
 import { getSortedPosts } from "@/utils/getSortedPosts";
-import {
-  excludeArchived,
-  isArchived,
-  topicTags,
-} from "@/utils/archiveFilter";
+import { excludeArchived, isArchived, topicTags } from "@/utils/archiveFilter";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
@@ -30,7 +24,7 @@ const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
 const archivedPosts = allSorted.filter(isArchived);
 const homePath = getRelativeLocaleUrl(locale, "");
 
-// 첫 화면 상태 줄에 쓰는 실제 수치. 글이 늘면 저절로 따라 바뀐다.
+// 하단 스펙 줄에 쓰는 실제 수치. 글이 늘면 저절로 따라 바뀐다.
 const archiveDates = archivedPosts
   .map(post => post.data.pubDatetime)
   .sort((a, b) => a.getTime() - b.getTime());
@@ -57,41 +51,119 @@ for (const post of archivedPosts) {
   if (archivePeek.length >= postsConfig.perIndex) break;
 }
 
+const archivesUrl = getRelativeLocaleUrl(locale, "archives/");
+const aboutUrl = getRelativeLocaleUrl(locale, "about/");
+const listUrl = getRelativeLocaleUrl(
+  locale,
+  recentPosts.length === 0 ? "archives/" : "posts/"
+);
 ---
 
 <Layout>
   <Header />
-  <main
-    id="main-content"
-    data-layout="index"
-    data-home-path={homePath}
-    class="app-layout my-1"
-  >
-    <section id="hero" class="pt-16 pb-14 sm:pt-24 sm:pb-20">
-      <h1 class="text-[2.6rem] font-semibold sm:text-6xl">
+
+  {/* 섹션마다 배경을 갈아 끼우려고 main 에서 폭 제한을 걷어낸다. */}
+  <main id="main-content" data-layout="index" data-home-path={homePath}>
+    <section class="px-4 py-24 text-center sm:py-32">
+      <h1
+        class="mx-auto max-w-4xl text-[clamp(2.5rem,7vw,4.5rem)] font-semibold"
+      >
         서버 만들고,<br />AI한테 제 일 시킵니다
       </h1>
-
-      <p class="text-muted-foreground mt-6 max-w-2xl text-lg sm:text-xl">
-        백엔드 개발자 이준석입니다. NestJS와 TypeScript로 서버를 만들고, 요즘은
-        Slack에서 부르면 리뷰하고 회고하고 코드까지 짜는 에이전트들을 만들어 두고
-        일을 떠넘기는 중입니다.
+      <p
+        class="text-muted-foreground mx-auto mt-6 max-w-2xl text-[clamp(1.125rem,2.4vw,1.5rem)] leading-snug"
+      >
+        백엔드 개발자 이준석입니다. 서버를 만들고, 요즘은 Slack에서 부르면
+        리뷰하고 회고하고 코드까지 짜는 에이전트들에게 일을 떠넘기는 중입니다.
       </p>
-      <p class="text-muted-foreground mt-4 max-w-2xl text-lg sm:text-xl">
-        여기에는 만들면서 알게 된 것들을 적습니다. 잘 된 것보다 <span
-          class="text-foreground">틀렸다가 알아낸 것</span
-        >이 더 많을 예정입니다.
+
+      <div
+        class="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-lg"
+      >
+        <a class="link-arrow" href={archivesUrl}>지난 글 보기</a>
+        <a class="link-arrow" href={aboutUrl}>더 알아보기</a>
+      </div>
+    </section>
+
+    <section class="bg-surface border-border border-y px-4 py-20 sm:py-24">
+      <div class="app-layout">
+        {
+          featuredPosts.length > 0 && (
+            <div class="mb-16">
+              <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+                {t.home.featured}
+              </h2>
+              <ul class="mt-10 grid gap-4 sm:grid-cols-2">
+                {featuredPosts.map(data => (
+                  <Card variant="h3" {...data} />
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        {
+          recentPosts.length > 0 && (
+            <div>
+              <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+                {t.home.recentPosts}
+              </h2>
+              <ul class="mt-10 grid gap-4 sm:grid-cols-2">
+                {recentPosts.slice(0, postsConfig.perIndex).map(data => (
+                  <Card variant="h3" {...data} />
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        {
+          /* 새 글이 아직 없을 때는 이 자리가 통째로 비므로, 지난 기록을 대신 보여준다. */
+          recentPosts.length === 0 && archivedPosts.length > 0 && (
+            <div>
+              <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+                그동안 남긴 기록
+              </h2>
+              <p class="text-muted-foreground mx-auto mt-4 max-w-2xl text-center text-lg sm:text-xl">
+                새 글은 준비 중입니다. 그 사이 2018~2022년에 공부하며 적어둔
+                것들을 놓아둡니다.
+              </p>
+              <ul class="mt-10 grid gap-4 sm:grid-cols-2">
+                {archivePeek.map(data => (
+                  <Card variant="h3" {...data} />
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        <p class="mt-10 text-center text-lg">
+          <a class="link-arrow" href={listUrl}>
+            {recentPosts.length === 0 ? "지난 글 전체 보기" : t.home.allPosts}
+          </a>
+        </p>
+      </div>
+    </section>
+
+    <section class="px-4 py-20 text-center sm:py-24">
+      <h2 class="text-[clamp(1.5rem,3.4vw,2.25rem)] font-semibold">
+        만들면서 알게 된 것들을 적습니다
+      </h2>
+      <p
+        class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg sm:text-xl"
+      >
+        잘 된 것보다 <span class="text-foreground">틀렸다가 알아낸 것</span>이 더
+        많을 예정입니다.
       </p>
 
       {
         socials.length > 0 && (
-          <div class="mt-8 flex items-center gap-3">
+          <div class="mt-8 flex items-center justify-center gap-4">
             <Socials />
           </div>
         )
       }
 
-      <!-- 제품 스펙처럼 아래에 조용히. 수치는 글이 늘면 따라 바뀐다. -->
       <p class="app-meta text-muted-foreground mt-10 text-xs">
         글 {sortedPosts.length} · 지난 기록 {archivedPosts.length}
         {archiveSpan && ` · ${archiveSpan}`} ·{" "}
@@ -102,71 +174,25 @@ for (const post of archivedPosts) {
         >
       </p>
     </section>
-
-    {
-      featuredPosts.length > 0 && (
-        <section
-          id="featured"
-          class:list={[
-            "pt-14 pb-6",
-            { "border-border border-b": recentPosts.length > 0 },
-          ]}
-        >
-          <h2 class="text-3xl font-semibold">{t.home.featured}</h2>
-          <ul class="mt-8 space-y-3">
-            {featuredPosts.map(data => (
-              <Card variant="h3" {...data} />
-            ))}
-          </ul>
-        </section>
-      )
-    }
-
-    {
-      recentPosts.length > 0 && (
-        <section id="recent-posts" class="border-border border-t pt-14 pb-6">
-          <h2 class="text-3xl font-semibold">{t.home.recentPosts}</h2>
-          <ul class="mt-8 space-y-3">
-            {recentPosts.slice(0, postsConfig.perIndex).map(data => (
-              <Card variant="h3" {...data} />
-            ))}
-          </ul>
-        </section>
-      )
-    }
-
-    {
-      /* 새 글이 아직 없을 때는 첫 화면이 통째로 비므로, 지난 기록을 대신 보여준다. */
-      recentPosts.length === 0 && archivedPosts.length > 0 && (
-        <section id="archive-peek" class="border-border border-t pt-14 pb-6">
-          <h2 class="text-3xl font-semibold">그동안 남긴 기록</h2>
-          <p class="text-muted-foreground mt-3 max-w-2xl text-lg">
-            새 글은 준비 중입니다. 그 사이 2018~2022년에 공부하며 적어둔 것들을
-            놓아둡니다.
-          </p>
-          <ul class="mt-8 space-y-3">
-            {archivePeek.map(data => (
-              <Card variant="h3" {...data} />
-            ))}
-          </ul>
-        </section>
-      )
-    }
-
-    <div class="mt-10 mb-4 text-center">
-      <LinkButton
-        href={getRelativeLocaleUrl(
-          locale,
-          recentPosts.length === 0 ? "archives" : "posts"
-        )}
-      >
-        {recentPosts.length === 0 ? "지난 글 전체 보기" : t.home.allPosts}
-        <IconArrowRight class="inline-block rtl:-rotate-180" />
-      </LinkButton>
-    </div>
   </main>
+
   <Footer />
 </Layout>
+
+<style>
+  /* 애플이 링크에 붙이는 겹화살괄호. 텍스트 옆에 붙어 따라다닌다. */
+  .link-arrow {
+    color: var(--accent);
+  }
+  .link-arrow::after {
+    content: " \203A";
+    display: inline-block;
+    margin-inline-start: 0.15em;
+  }
+  .link-arrow:hover {
+    text-decoration: underline;
+  }
+</style>
 
 <script>
   document.addEventListener("astro:page-load", () => {
@@ -178,4 +204,3 @@ for (const post of archivedPosts) {
     }
   });
 </script>
-

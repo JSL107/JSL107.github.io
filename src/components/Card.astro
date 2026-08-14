@@ -36,7 +36,7 @@ const date = dayjs(modDatetime ?? pubDatetime)
 <li>
   <a
     href={getPostUrl(id, filePath, Astro.currentLocale)}
-    class="group bg-surface focus-visible:outline-accent block rounded-2xl px-6 py-5 focus-visible:outline-2 focus-visible:outline-offset-2"
+    class="group bg-background focus-visible:outline-accent block h-full rounded-2xl px-6 py-5 focus-visible:outline-2 focus-visible:outline-offset-2"
   >
     <p class="app-meta text-muted-foreground text-xs">
       <time datetime={pubDatetime.toISOString()}>{date}</time>

@@ -23,7 +23,8 @@
 }
 
 @utility max-w-app {
-  @apply max-w-3xl;
+  /* 애플 본문 폭에 맞춘다. 3xl(768px)은 한 컬럼 블로그용이라 좁다. */
+  @apply max-w-5xl;
 }
 
 @utility app-layout {
