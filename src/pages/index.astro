@@ -150,7 +150,7 @@ const listUrl = getRelativeLocaleUrl(
               <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
                 {t.home.featured}
               </h2>
-              <ul class="mt-10 grid gap-4 sm:grid-cols-2">
+              <ul class="mt-10 grid gap-6 sm:grid-cols-2">
                 {featuredPosts.map(data => (
                   <Card variant="h3" {...data} />
                 ))}
@@ -165,7 +165,7 @@ const listUrl = getRelativeLocaleUrl(
               <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
                 {t.home.recentPosts}
               </h2>
-              <ul class="mt-10 grid gap-4 sm:grid-cols-2">
+              <ul class="mt-10 grid gap-6 sm:grid-cols-2">
                 {recentPosts.slice(0, postsConfig.perIndex).map(data => (
                   <Card variant="h3" {...data} />
                 ))}
@@ -185,7 +185,7 @@ const listUrl = getRelativeLocaleUrl(
                 2018~2022년, 처음 서버와 알고리즘을 배우면서 남긴{" "}
                 {archivedPosts.length}편입니다. 새 글은 여기에 이어서 올려요.
               </p>
-              <ul class="mt-10 grid gap-4 sm:grid-cols-2">
+              <ul class="mt-10 grid gap-6 sm:grid-cols-2">
                 {archivePeek.map(data => (
                   <Card variant="h3" {...data} />
                 ))}

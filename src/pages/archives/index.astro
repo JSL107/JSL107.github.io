@@ -65,9 +65,9 @@ const monthFormatter = new Intl.DateTimeFormat(locale, { month: "long" });
                       {monthGroup.length}
                     </sup>
                   </div>
-                  {/* 카드는 모서리가 둥글다 — 사이를 벌리지 않으면 둥근 면들이 맞물려
-                      목록 좌우에 톱니처럼 홈이 파인다. 홈 화면 격자와 같은 간격을 쓴다. */}
-                  <ul class="grid min-w-0 flex-1 gap-4">
+                  {/* 카드 모서리 반경이 16px 이라 간격도 16px 이면 좌우 끝에서 곡선끼리
+                      마주 붙어 물려 보인다. 반경보다 큰 24px. 홈 격자와 같은 간격. */}
+                  <ul class="grid min-w-0 flex-1 gap-6">
                     {monthGroup
                       .sort(
                         (a, b) =>
