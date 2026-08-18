@@ -52,10 +52,13 @@ const monthFormatter = new Intl.DateTimeFormat(locale, { month: "long" });
             )
               .sort(([monthA], [monthB]) => Number(monthB) - Number(monthA))
               .map(([month, monthGroup]) => (
-                <div class="flex flex-col sm:flex-row">
+                <div class="flex flex-col sm:mb-6 sm:flex-row">
+                  {/* 월마다 목록이 따로라 gap 이 월 경계를 넘지 못한다 — 여백을 월 그룹
+                      자체(위 sm:mb-6)에 줘야 8월 마지막 카드와 7월 첫 카드가 붙지 않는다.
+                      라벨에 준 mb 는 행 높이를 못 늘려(옆 목록이 더 길다) 아무 일도 안 했다. */}
                   {/* 월 이름을 카드 첫 줄(날짜)과 같은 높이에 세운다. 카드 위 여백 20px 에
                       글자 크기 차이를 더해 맞춘 값 — 24px 이면 한 줄 아래로 내려가 보인다. */}
-                  <div class="mt-6 min-w-36 text-lg sm:mt-4 sm:mb-6">
+                  <div class="mt-6 min-w-36 text-lg sm:mt-4">
                     <span class="font-bold">
                       {monthFormatter.format(
                         new Date(2000, Number(month) - 1, 1)
