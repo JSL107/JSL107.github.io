@@ -7,7 +7,7 @@ import Footer from "@/components/Footer.astro";
 import Socials from "@/components/Socials.astro";
 import Card from "@/components/Card.astro";
 import { getSortedPosts } from "@/utils/getSortedPosts";
-import { excludeArchived, isArchived, topicTags } from "@/utils/archiveFilter";
+import { topicTags } from "@/utils/archiveFilter";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
@@ -17,41 +17,49 @@ const locale = Astro.currentLocale ?? config.site.lang;
 const t = useTranslations(locale);
 
 const posts = await getCollection("posts");
-const allSorted = getSortedPosts(posts);
-const sortedPosts = excludeArchived(allSorted);
+const sortedPosts = getSortedPosts(posts);
 const featuredPosts = sortedPosts.filter(({ data }) => data.featured);
 const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
-const archivedPosts = allSorted.filter(isArchived);
 const homePath = getRelativeLocaleUrl(locale, "");
 
 // 하단 스펙 줄에 쓰는 실제 수치. 글이 늘면 저절로 따라 바뀐다.
-const archiveDates = archivedPosts
+const postDates = sortedPosts
   .map(post => post.data.pubDatetime)
   .sort((a, b) => a.getTime() - b.getTime());
 const yearMonth = (date: Date | undefined) =>
   date
     ? `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}`
     : "";
-const archiveSpan =
-  archiveDates.length > 0
-    ? `${yearMonth(archiveDates[0])}–${yearMonth(archiveDates.at(-1))}`
+const postSpan =
+  postDates.length > 0
+    ? `${yearMonth(postDates[0])}–${yearMonth(postDates.at(-1))}`
     : "";
 
-// 지난 기록 미리보기는 최신순으로 뽑으면 같은 시기에 몰아 쓴 알고리즘 풀이만 나열된다.
-// 주제(태그)가 겹치지 않게 골라 무엇을 공부했는지가 한눈에 보이게 한다.
+// 홈 미리보기를 최신순으로만 뽑으면 같은 시기에 몰아 쓴 알고리즘 풀이만 나열된다.
+// 주제(태그)가 겹치지 않게 먼저 훑어 무엇을 적는 곳인지가 한눈에 보이게 한다.
 const topicOf = (tags: string[]) => topicTags(tags)[0] ?? "etc";
-
-const archivePeek: typeof archivedPosts = [];
+const peek: typeof recentPosts = [];
 const seenTopics = new Set<string>();
-for (const post of archivedPosts) {
+for (const post of recentPosts) {
   const topic = topicOf(post.data.tags);
-  if (seenTopics.has(topic)) continue;
+  if (seenTopics.has(topic)) {
+    continue;
+  }
   seenTopics.add(topic);
-  archivePeek.push(post);
-  if (archivePeek.length >= postsConfig.perIndex) break;
+  peek.push(post);
+  if (peek.length >= postsConfig.perIndex) {
+    break;
+  }
 }
-
-const archivesUrl = getRelativeLocaleUrl(locale, "archives/");
+// 주제가 모자라면 최신순으로 채운다.
+for (const post of recentPosts) {
+  if (peek.length >= postsConfig.perIndex) {
+    break;
+  }
+  if (!peek.includes(post)) {
+    peek.push(post);
+  }
+}
 
 /*
  * 첫 화면에서 이 블로그가 무엇을 적는 곳인지 설명 대신 실물로 보여주는 보기.
@@ -71,10 +79,7 @@ const traces = [
     cause: "남이 준 응답을 그대로 믿고 있었다",
   },
 ];
-const listUrl = getRelativeLocaleUrl(
-  locale,
-  recentPosts.length === 0 ? "archives/" : "posts/"
-);
+const listUrl = getRelativeLocaleUrl(locale, "posts/");
 ---
 
 <Layout>
@@ -82,7 +87,8 @@ const listUrl = getRelativeLocaleUrl(
 
   {/* 섹션마다 배경을 갈아 끼우려고 main 에서 폭 제한을 걷어낸다. */}
   <main id="main-content" data-layout="index" data-home-path={homePath}>
-    <section class="px-4 py-12 text-center sm:py-16">
+    {/* 첫 화면의 할 일은 글로 보내는 것 하나 — 배너 높이를 넘기지 않는다. */}
+    <section class="px-4 py-10 text-center sm:py-14">
       {
         /*
         제목이 스스로 주제를 보여주게 한다 — 증상은 뒤로 물러나고 원인이 앞으로 나온다.
@@ -91,21 +97,70 @@ const listUrl = getRelativeLocaleUrl(
       }
       <h1 class="mx-auto max-w-4xl font-semibold">
         <span
-          class="text-muted-foreground block text-[clamp(1.25rem,3vw,2rem)]"
+          class="text-muted-foreground block text-[clamp(1rem,2.2vw,1.375rem)]"
         >
           증상 말고
         </span>
-        <span class="mt-1 block text-[clamp(2.5rem,7vw,4.5rem)]">
+        <span class="mt-1 block text-[clamp(2rem,5vw,3.25rem)]">
           원인을 고칩니다
         </span>
       </h1>
       <p
-        class="text-muted-foreground mx-auto mt-6 max-w-2xl text-[clamp(1.125rem,2.4vw,1.5rem)] leading-snug"
+        class="text-muted-foreground mx-auto mt-4 max-w-2xl text-base leading-relaxed sm:text-lg"
       >
         백엔드 개발자입니다. 급하게 막아둔 건 꼭 다시 터지더라고요. 무엇이 왜
         고장났고 어떻게 고쳤는지를 적습니다.
       </p>
+    </section>
 
+    {/* 배경은 바탕색 그대로 두고, 카드만 흰 면으로 띄워 층을 만든다. */}
+    <section class="border-border border-y px-4 py-12 sm:py-16">
+      <div class="app-layout">
+        {
+          featuredPosts.length > 0 && (
+            <div class="mb-16">
+              <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+                {t.home.featured}
+              </h2>
+              <ul class="mt-8 grid gap-6 sm:grid-cols-2">
+                {featuredPosts.map(data => (
+                  <Card variant="h3" {...data} />
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        {
+          recentPosts.length > 0 && (
+            <div>
+              <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+                지금까지 쓴 글
+              </h2>
+              <ul class="mt-8 grid gap-6 sm:grid-cols-2">
+                {peek.map(data => (
+                  <Card variant="h3" {...data} />
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        <p class="mt-10 text-center text-lg">
+          <a class="link-arrow" href={listUrl}>
+            {t.home.allPosts}
+          </a>
+        </p>
+      </div>
+    </section>
+
+    {
+      /* 무엇을 적는 곳인지 설명 대신 실물로 보여준다. 글 목록을 지난 자리에 둔다. */
+    }
+    <section class="px-4 py-16 text-center sm:py-20">
+      <h2 class="text-[clamp(1.5rem,3.4vw,2.25rem)] font-semibold">
+        이런 걸 적습니다
+      </h2>
       {
         /*
         제목이 말한 것을 화면에서 한 번 더 보여준다 — 위가 증상, 아래가 원인.
@@ -132,77 +187,9 @@ const listUrl = getRelativeLocaleUrl(
           ))
         }
       </ul>
-
-      {
-        /* 소개는 위 메뉴에 이미 있다 — 첫 화면의 할 일은 글로 보내는 것 하나다. */
-      }
-      <p class="mt-10 text-lg">
-        <a class="link-arrow" href={archivesUrl}>지난 글 보기</a>
-      </p>
     </section>
 
-    {/* 배경은 바탕색 그대로 두고, 카드만 흰 면으로 띄워 층을 만든다. */}
-    <section class="border-border border-y px-4 py-16 sm:py-20">
-      <div class="app-layout">
-        {
-          featuredPosts.length > 0 && (
-            <div class="mb-16">
-              <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
-                {t.home.featured}
-              </h2>
-              <ul class="mt-10 grid gap-6 sm:grid-cols-2">
-                {featuredPosts.map(data => (
-                  <Card variant="h3" {...data} />
-                ))}
-              </ul>
-            </div>
-          )
-        }
-
-        {
-          recentPosts.length > 0 && (
-            <div>
-              <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
-                {t.home.recentPosts}
-              </h2>
-              <ul class="mt-10 grid gap-6 sm:grid-cols-2">
-                {recentPosts.slice(0, postsConfig.perIndex).map(data => (
-                  <Card variant="h3" {...data} />
-                ))}
-              </ul>
-            </div>
-          )
-        }
-
-        {
-          /* 새 글이 아직 없을 때는 이 자리가 통째로 비므로, 지난 기록을 대신 보여준다. */
-          recentPosts.length === 0 && archivedPosts.length > 0 && (
-            <div>
-              <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
-                그동안 남긴 기록
-              </h2>
-              <p class="text-muted-foreground mx-auto mt-4 max-w-2xl text-center text-lg sm:text-xl">
-                2018~2022년, 처음 서버와 알고리즘을 배우면서 남긴{" "}
-                {archivedPosts.length}편입니다. 새 글은 여기에 이어서 올려요.
-              </p>
-              <ul class="mt-10 grid gap-6 sm:grid-cols-2">
-                {archivePeek.map(data => (
-                  <Card variant="h3" {...data} />
-                ))}
-              </ul>
-            </div>
-          )
-        }
-
-        <p class="mt-10 text-center text-lg">
-          <a class="link-arrow" href={listUrl}>
-            {recentPosts.length === 0 ? "지난 글 전체 보기" : t.home.allPosts}
-          </a>
-        </p>
-      </div>
-    </section>
-
-    <section class="px-4 py-20 text-center sm:py-24">
+    <section class="border-border border-t px-4 py-20 text-center sm:py-24">
       <h2 class="text-[clamp(1.5rem,3.4vw,2.25rem)] font-semibold">
         요즘은 제 일을 대신할 것들을 만듭니다
       </h2>
@@ -227,8 +214,7 @@ const listUrl = getRelativeLocaleUrl(
       }
       <p class="app-meta text-muted-foreground mt-10 text-xs">
         {sortedPosts.length > 0 && `글 ${sortedPosts.length} · `}
-        지난 기록 {archivedPosts.length}
-        {archiveSpan && ` · ${archiveSpan}`} ·{" "}
+        {postSpan && `${postSpan} · `}
         <a
           target="_blank"
           href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}rss.xml`}

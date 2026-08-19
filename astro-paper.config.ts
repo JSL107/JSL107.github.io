@@ -3,7 +3,7 @@ import { defineAstroPaperConfig } from "./src/types/config";
 export default defineAstroPaperConfig({
   site: {
     url: "https://jsl107.github.io/",
-    title: "원인을 고칩니다",
+    title: "JSL107 Tech Note",
     description:
       "백엔드 개발자의 블로그. 서버를 만들다 부딪힌 문제와, 틀렸다가 알아낸 것들을 적습니다.",
     author: "JSL107",
@@ -16,7 +16,7 @@ export default defineAstroPaperConfig({
   posts: {
     perPage: 8,
     // 홈은 카드를 두 장씩 나란히 놓는다 — 홀수면 마지막 줄 오른쪽이 빈 칸으로 남는다.
-    perIndex: 4,
+    perIndex: 6,
     scheduledPostMargin: 15 * 60 * 1000,
   },
   features: {

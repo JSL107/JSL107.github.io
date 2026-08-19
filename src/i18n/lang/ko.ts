@@ -6,7 +6,7 @@ export default {
     posts: "글",
     tags: "태그",
     about: "소개",
-    archives: "지난 글",
+    archives: "연도별",
     search: "검색",
   },
   post: {
@@ -48,9 +48,8 @@ export default {
     postsTitle: "글",
     postsDesc: "여기까지 쓴 글을 모아뒀습니다.",
 
-    archivesTitle: "지난 글",
-    archivesDesc:
-      "2018~2022년에 공부하며 남긴 기록입니다. 지금 보면 부끄러운 것도 있지만 그대로 둡니다.",
+    archivesTitle: "연도별 보기",
+    archivesDesc: "쓴 순서대로 연도별로 묶어뒀습니다.",
 
     searchTitle: "검색",
     searchDesc: "찾고 싶은 글을 검색해보세요",
