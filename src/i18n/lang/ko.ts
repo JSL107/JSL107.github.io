@@ -35,7 +35,7 @@ export default {
   },
   footer: {
     // Footer 가 "{copyright} © {연도}" · "{allRightsReserved}" 로 조립한다.
-    copyright: "이준석",
+    copyright: "JSL107",
     allRightsReserved: "글과 코드에 대한 권리는 글쓴이에게 있습니다.",
   },
   pages: {

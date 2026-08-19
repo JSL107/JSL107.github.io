@@ -1,6 +1,6 @@
 # jsl107.github.io
 
-이준석 개발 블로그. [AstroPaper](https://github.com/satnaing/astro-paper) 테마를 기반으로 한 Astro 정적 사이트.
+원인을 고칩니다 — JSL107 개발 블로그. [AstroPaper](https://github.com/satnaing/astro-paper) 테마를 기반으로 한 Astro 정적 사이트.
 
 ## 글 쓰기
 
