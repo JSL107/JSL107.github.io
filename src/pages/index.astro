@@ -7,7 +7,7 @@ import Footer from "@/components/Footer.astro";
 import Socials from "@/components/Socials.astro";
 import Card from "@/components/Card.astro";
 import { getSortedPosts } from "@/utils/getSortedPosts";
-import { topicTags } from "@/utils/archiveFilter";
+import { UNCATEGORIZED } from "@/utils/categories";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
@@ -35,13 +35,12 @@ const postSpan =
     ? `${yearMonth(postDates[0])}–${yearMonth(postDates.at(-1))}`
     : "";
 
-// 홈 미리보기를 최신순으로만 뽑으면 같은 시기에 몰아 쓴 알고리즘 풀이만 나열된다.
-// 주제(태그)가 겹치지 않게 먼저 훑어 무엇을 적는 곳인지가 한눈에 보이게 한다.
-const topicOf = (tags: string[]) => topicTags(tags)[0] ?? "etc";
+// 홈 미리보기를 최신순으로만 뽑으면 같은 시기에 몰아 쓴 글만 나열된다.
+// 분류가 겹치지 않게 먼저 훑어 무엇을 적는 곳인지가 한눈에 보이게 한다.
 const peek: typeof recentPosts = [];
 const seenTopics = new Set<string>();
 for (const post of recentPosts) {
-  const topic = topicOf(post.data.tags);
+  const topic = post.data.category ?? UNCATEGORIZED;
   if (seenTopics.has(topic)) {
     continue;
   }
@@ -91,26 +90,24 @@ const listUrl = getRelativeLocaleUrl(locale, "posts/");
     <section class="px-4 py-10 text-center sm:py-14">
       {
         /*
-        제목이 스스로 태도를 보여주게 한다 — 계기가 뒤로 물러나고 결과가 앞으로 나온다.
-        화면 낭독기에는 여전히 "불편한 걸 못 참아서 결국 만들게 됩니다" 한 문장이다.
+        제목이 스스로 태도를 보여주게 한다 — 상황이 뒤로 물러나고 태도가 앞으로 나온다.
+        화면 낭독기에는 여전히 "문제를 불편한 채로 두기보다 해결하려고 합니다" 한 문장이다.
       */
       }
       <h1 class="mx-auto max-w-4xl font-semibold">
         <span
           class="text-muted-foreground block text-[clamp(1rem,2.2vw,1.375rem)]"
         >
-          불편한 걸 못 참아서
+          문제를 불편한 채로 두기보다
         </span>
         <span class="mt-1 block text-[clamp(2rem,5vw,3.25rem)]">
-          결국 만들게 됩니다
+          해결하려고 합니다
         </span>
       </h1>
       <p
         class="text-muted-foreground mx-auto mt-4 max-w-2xl text-base leading-relaxed sm:text-lg"
       >
-        백엔드 개발자입니다. 로그만 뒤지는 게 답답해 화면을 만들고, 사람이
-        잊을까 봐 알림을 붙입니다. 그러다 부딪힌 문제와 그때 알아본 것을
-        적습니다.
+        그렇게 문제를 풀어보며 공부하거나 알게 된 내용을 적어두는 블로그입니다.
       </p>
     </section>
 
@@ -123,7 +120,12 @@ const listUrl = getRelativeLocaleUrl(locale, "posts/");
               <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
                 {t.home.featured}
               </h2>
-              <ul class="mt-8 grid gap-6 sm:grid-cols-2">
+              <ul
+                class:list={[
+                  "mt-8 grid gap-6",
+                  featuredPosts.length > 1 && "sm:grid-cols-2",
+                ]}
+              >
                 {featuredPosts.map(data => (
                   <Card variant="h3" {...data} />
                 ))}
@@ -138,7 +140,12 @@ const listUrl = getRelativeLocaleUrl(locale, "posts/");
               <h2 class="text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
                 지금까지 쓴 글
               </h2>
-              <ul class="mt-8 grid gap-6 sm:grid-cols-2">
+              <ul
+                class:list={[
+                  "mt-8 grid gap-6",
+                  peek.length > 1 && "sm:grid-cols-2",
+                ]}
+              >
                 {peek.map(data => (
                   <Card variant="h3" {...data} />
                 ))}

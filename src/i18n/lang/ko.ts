@@ -4,7 +4,7 @@ export default {
   nav: {
     home: "홈",
     posts: "글",
-    tags: "태그",
+    categories: "분류",
     about: "소개",
     archives: "연도별",
     search: "검색",
@@ -15,7 +15,7 @@ export default {
     sharePostIntro: "이 글 공유하기:",
     sharePostOn: "{{platform}}에 공유하기",
     sharePostViaEmail: "메일로 공유하기",
-    tagLabel: "태그",
+    categoryLabel: "분류",
     backToTop: "맨 위로",
     goBack: "돌아가기",
     editPage: "이 글 고치기",
@@ -39,11 +39,10 @@ export default {
     allRightsReserved: "글과 코드에 대한 권리는 글쓴이에게 있습니다.",
   },
   pages: {
-    tagTitle: "태그",
-    tagDesc: "이 태그가 붙은 글",
+    categoryDesc: "이 분류로 묶인 글",
 
-    tagsTitle: "태그",
-    tagsDesc: "지금까지 쓴 글에 붙은 태그들입니다.",
+    categoriesTitle: "분류",
+    categoriesDesc: "글을 주제별로 묶어 뒀습니다.",
 
     postsTitle: "글",
     postsDesc: "여기까지 쓴 글을 모아뒀습니다.",
