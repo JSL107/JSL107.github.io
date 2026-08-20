@@ -3,7 +3,7 @@ import { defineAstroPaperConfig } from "./src/types/config";
 export default defineAstroPaperConfig({
   site: {
     url: "https://jsl107.github.io/",
-    title: "JSL107 Tech Note",
+    title: "JSL107's Tech Note",
     description:
       "백엔드 개발자의 블로그. 서버를 만들다 부딪힌 문제와, 틀렸다가 알아낸 것들을 적습니다.",
     author: "JSL107",
