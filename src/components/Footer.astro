@@ -19,7 +19,10 @@ const currentYear = new Date().getFullYear();
 const links = [
   { label: t.nav.posts, href: getRelativeLocaleUrl(locale, "posts/") },
   { label: t.nav.archives, href: getRelativeLocaleUrl(locale, "archives/") },
-  { label: t.nav.tags, href: getRelativeLocaleUrl(locale, "tags/") },
+  {
+    label: t.nav.categories,
+    href: getRelativeLocaleUrl(locale, "categories/"),
+  },
   { label: t.nav.about, href: getRelativeLocaleUrl(locale, "about/") },
   {
     label: "RSS",

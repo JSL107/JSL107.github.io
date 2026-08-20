@@ -1,0 +1,28 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+import { categoryName } from "@/utils/categories";
+import config from "@/config";
+
+type Props = {
+  category: string;
+  size?: "sm" | "lg";
+};
+
+const { category, size = "lg" } = Astro.props;
+
+const locale = Astro.currentLocale ?? config.site.lang;
+---
+
+<li>
+  <a
+    href={getRelativeLocaleUrl(locale, `categories/${category}/`)}
+    transition:name={category}
+    class:list={[
+      "border-border hover:border-accent/60 hover:text-accent focus-visible:outline-accent inline-flex items-baseline rounded-full border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
+      { "px-2.5 py-0.5 text-sm": size === "sm" },
+      { "px-3 py-1 text-base": size === "lg" },
+    ]}
+  >
+    {categoryName(category)}
+  </a>
+</li>

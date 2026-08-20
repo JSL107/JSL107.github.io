@@ -5,7 +5,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { getPostUrl } from "@/utils/getPostPaths";
 import { toTransitionName } from "@/utils/toTransitionName";
-import { topicTags } from "@/utils/archiveFilter";
+import { categoryName } from "@/utils/categories";
 import config from "@/config";
 
 dayjs.extend(utc);
@@ -19,14 +19,14 @@ const { variant: Heading = "h2", id, data, filePath } = Astro.props;
 const {
   title,
   description,
-  tags,
+  category,
   pubDatetime,
   modDatetime,
   timezone: postTimezone,
 } = data;
 
-// 목록에서는 글 주제만 보여준다. archive/summary 는 모든 옛 글에 붙어 있어 구분에 도움이 안 된다.
-const visibleTags = topicTags(tags).slice(0, 3);
+// 옛 글에는 분류가 없다(목록에서 빼둔 글이라 붙이지 않았다) — 그때는 날짜만 보인다.
+const label = category ? categoryName(category) : "";
 
 const date = dayjs(modDatetime ?? pubDatetime)
   .tz(postTimezone ?? config.site.timezone)
@@ -57,14 +57,7 @@ const date = dayjs(modDatetime ?? pubDatetime)
       <time class="app-meta" datetime={pubDatetime.toISOString()}>
         {date}
       </time>
-      {
-        visibleTags.length > 0 && (
-          <span>
-            {" · "}
-            {visibleTags.join(" · ")}
-          </span>
-        )
-      }
+      {label && <span>{` · ${label}`}</span>}
     </p>
 
     <Heading
