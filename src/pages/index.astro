@@ -79,6 +79,7 @@ const fixes = [
   },
 ];
 const listUrl = getRelativeLocaleUrl(locale, "posts/");
+const aboutUrl = getRelativeLocaleUrl(locale, "about/");
 ---
 
 <Layout>
@@ -195,6 +196,10 @@ const listUrl = getRelativeLocaleUrl(locale, "posts/");
           ))
         }
       </ul>
+      {/* 같은 사례를 소개에서 배경까지 풀어 쓴다. 여기서 그쪽으로 넘긴다. */}
+      <p class="mt-10 text-base">
+        <a class="link-arrow" href={aboutUrl}>어떻게 고쳤는지 하나씩</a>
+      </p>
     </section>
 
     <section class="border-border border-t px-4 py-20 text-center sm:py-24">
@@ -202,10 +207,9 @@ const listUrl = getRelativeLocaleUrl(locale, "posts/");
         제 일을 대신할 회사를 하나 차렸습니다
       </h2>
       <p
-        class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg sm:text-xl"
+        class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg text-balance sm:text-xl"
       >
-        사람은 없고 전부 프로그램이에요. 부르면 코드를 검토하고 하루를
-        정리해줍니다. 잘 된 것보다{" "}
+        그걸 만들며 부딪힌 것들을 여기 적습니다. 잘된 것보다{" "}
         <span class="text-foreground">틀렸다가 알아낸 것</span>이 더 많습니다.
       </p>
 
