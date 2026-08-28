@@ -6,7 +6,9 @@ import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import Socials from "@/components/Socials.astro";
 import Card from "@/components/Card.astro";
+import Category from "@/components/Category.astro";
 import { getSortedPosts } from "@/utils/getSortedPosts";
+import { getUniqueCategories } from "@/utils/getUniqueCategories";
 import { UNCATEGORIZED } from "@/utils/categories";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
@@ -61,25 +63,11 @@ for (const post of recentPosts) {
 }
 
 /*
- * 첫 화면에서 이 블로그가 무엇을 적는 곳인지 설명 대신 실물로 보여주는 보기.
- * 위가 불편했던 상황, 아래가 그래서 만든 것이다. 전부 실제로 만들어 쓰고 있다.
+ * 무엇을 적는 곳인지는 글에서 뽑는다 — 여기에 손으로 적으면 글이 늘 때마다 어긋난다.
+ * 아직 글이 없는 분류는 나오지 않는다(빈 분류를 광고하지 않기 위해).
  */
-const fixes = [
-  {
-    trouble: "왜 깨졌는지 알 방법이 기록을 하나하나 뒤지는 것뿐이었다",
-    built: "실패를 한자리에 모아 보여주는 화면을 만들었다",
-  },
-  {
-    trouble: "1년에 한 번인 인증서 갱신을 사람이 기억해야 했다",
-    built: "만료일을 매일 확인해 미리 알려주게 했다",
-  },
-  {
-    trouble: "코드 검토도 하루 정리도 매번 손으로 했다",
-    built: "부르면 대신하는 직원들을 만들어 앉혔다",
-  },
-];
+const topics = getUniqueCategories(posts);
 const listUrl = getRelativeLocaleUrl(locale, "posts/");
-const aboutUrl = getRelativeLocaleUrl(locale, "about/");
 ---
 
 <Layout>
@@ -108,8 +96,18 @@ const aboutUrl = getRelativeLocaleUrl(locale, "about/");
       <p
         class="text-muted-foreground mx-auto mt-4 max-w-2xl text-base leading-relaxed sm:text-lg"
       >
-        그렇게 문제를 풀어보며 공부하거나 알게 된 내용을 적어두는 블로그입니다.
+        AI 에이전트를 만들며 부딪힌 것과, 그러다 다시 들여다본 웹·백엔드
+        기본기를 적습니다.
       </p>
+      {
+        topics.length > 0 && (
+          <ul class="mt-6 flex flex-wrap justify-center gap-2">
+            {topics.map(category => (
+              <Category {category} size="sm" />
+            ))}
+          </ul>
+        )
+      }
     </section>
 
     {/* 배경은 바탕색 그대로 두고, 카드만 흰 면으로 띄워 층을 만든다. */}
@@ -164,58 +162,15 @@ const aboutUrl = getRelativeLocaleUrl(locale, "about/");
     </section>
 
     {
-      /* 무엇을 적는 곳인지 설명 대신 실물로 보여준다. 글 목록을 지난 자리에 둔다. */
+      /*
+      홈을 닫는 줄. 무엇을 적는 곳인지는 위에서 이미 말했으므로 여기서는
+      나가는 문(연락처·구독)과 규모만 둔다.
+    */
     }
-    <section class="px-4 py-16 text-center sm:py-20">
-      <h2 class="text-[clamp(1.5rem,3.4vw,2.25rem)] font-semibold">
-        대개 이런 이야기입니다
-      </h2>
-      {
-        /*
-        제목이 말한 것을 화면에서 한 번 더 보여준다 — 위가 불편, 아래가 만든 것.
-        가운데로 모인 문단 사이에서 유일하게 왼쪽으로 정렬해 눈이 여기서 멈추게 한다.
-
-        고정폭 서체는 쓰지 않는다 — 한글은 낱자 폭이 라틴 글자에 맞춰 늘어나서
-        글자 사이가 성기게 벌어진다. 기록처럼 보이는 인상은 └ 기호와 두 줄 구조가 낸다.
-      */
-      }
-      <ul
-        class="mx-auto mt-10 grid max-w-lg gap-5 text-start text-[15px] sm:text-base"
-      >
-        {
-          fixes.map(({ trouble, built }) => (
-            <li>
-              <p class="text-muted-foreground">{trouble}</p>
-              <p class="mt-1 flex gap-2">
-                <span class="text-accent select-none" aria-hidden="true">
-                  └
-                </span>
-                <span>{built}</span>
-              </p>
-            </li>
-          ))
-        }
-      </ul>
-      {/* 같은 사례를 소개에서 배경까지 풀어 쓴다. 여기서 그쪽으로 넘긴다. */}
-      <p class="mt-10 text-base">
-        <a class="link-arrow" href={aboutUrl}>어떻게 고쳤는지 하나씩</a>
-      </p>
-    </section>
-
-    <section class="border-border border-t px-4 py-20 text-center sm:py-24">
-      <h2 class="text-[clamp(1.5rem,3.4vw,2.25rem)] font-semibold">
-        제 일을 대신할 회사를 하나 차렸습니다
-      </h2>
-      <p
-        class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg text-balance sm:text-xl"
-      >
-        그걸 만들며 부딪힌 것들을 여기 적습니다. 잘된 것보다{" "}
-        <span class="text-foreground">틀렸다가 알아낸 것</span>이 더 많습니다.
-      </p>
-
+    <section class="border-border border-t px-4 py-12 text-center sm:py-16">
       {
         socials.length > 0 && (
-          <div class="mt-8 flex items-center justify-center gap-4">
+          <div class="flex items-center justify-center gap-4">
             <Socials />
           </div>
         )
@@ -224,7 +179,7 @@ const aboutUrl = getRelativeLocaleUrl(locale, "about/");
       {
         /* 아직 0 인 값을 첫 방문자에게 굳이 세어 보일 필요는 없다. 생기면 저절로 나온다. */
       }
-      <p class="app-meta text-muted-foreground mt-10 text-xs">
+      <p class="app-meta text-muted-foreground mt-6 text-xs">
         {sortedPosts.length > 0 && `글 ${sortedPosts.length} · `}
         {postSpan && `${postSpan} · `}
         <a
