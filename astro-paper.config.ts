@@ -5,7 +5,7 @@ export default defineAstroPaperConfig({
     url: "https://jsl107.github.io/",
     title: "JSL107's Tech Note",
     description:
-      "백엔드 개발자의 블로그. 서버를 만들다 부딪힌 문제와, 틀렸다가 알아낸 것들을 적습니다.",
+      "AI 에이전트와 백엔드 서버를 만들며 부딪힌 문제와, 틀렸다가 알아낸 것을 적습니다.",
     author: "JSL107",
     profile: "https://github.com/JSL107",
     ogImage: "default-og.jpg",
