@@ -27,7 +27,7 @@ type CodeModeOutput =
   | { status: "error"; executionId: string; error: string; logs?: string[] };
 ```
 
-핵심 차이는 제어 흐름이 어디에 놓이느냐예요. direct tool call에서는 모델이 tool → result → next tool을 반복하지만, Code Mode는 loop, branch, filter, transform 같은 중간 제어를 sandbox 안의 코드로 옮겨요. paused 상태가 생기면 host가 위험한 호출을 pending action으로 멈추므로, 승인·감사·재실행의 경계를 잡을 수 있어요.
+핵심 차이는 제어 흐름이 어디에 놓이느냐예요. direct tool call에서는 모델이 tool → result → next tool을 반복해요. Code Mode는 loop, branch, filter, transform 같은 중간 제어를 sandbox 안의 코드로 옮기고요. paused 상태가 생기면 host가 위험한 호출을 pending action으로 멈추므로, 승인·감사·재실행의 경계를 잡을 수 있어요.
 
 ## 필요한 도구만 찾아서 실행한다
 
@@ -44,7 +44,7 @@ declare const codemode: {
 
 search는 전체 스키마를 넘기는 대신 관련 path 목록을 반환하고, describe는 선택한 대상의 TypeScript 문서를 돌려줘요. step은 replay를 위해 비결정적이거나 side effect가 있는 작업을 기록하고, run은 저장된 snippet을 실행해요.
 
-connector는 sandbox global로 노출돼요. github라는 connector가 있다면 generated code는 github global을 통해 method를 호출하고, sandbox에는 표준 JavaScript global이 있어요.
+connector는 sandbox global로 노출돼요. github라는 connector가 있다면 generated code는 github global을 통해 method를 호출해요. sandbox에는 표준 JavaScript global이 있고요.
 
 Node.js API, host credentials, process, require, unrestricted network access는 노출되지 않아요.
 
@@ -52,7 +52,7 @@ Node.js API, host credentials, process, require, unrestricted network access는 
 
 ## Durable runtime이 제공하는 실행 경계
 
-Cloudflare의 durable runtime은 Code Mode를 Agents SDK 애플리케이션에 연결하며, Durable Object와 Vite, Worker Loader binding이 전제예요. Durable Object hibernation 뒤에도 execution history와 pending approvals를 저장하고, reusable snippets와 rollback metadata도 남겨둬요.
+Cloudflare의 durable runtime은 Code Mode를 Agents SDK 애플리케이션에 연결해요. Durable Object와 Vite, Worker Loader binding이 전제죠. Durable Object hibernation 뒤에도 execution history와 pending approvals를 저장해요. reusable snippets와 rollback metadata도 남겨두고요.
 
 ```plain text
 compatibility_date = "2026-08-22"
@@ -107,7 +107,7 @@ rollback 가능 여부와 실행 로그에 민감정보가 남지 않는지도 �
 
 먼저 GitHub PR diff 수집처럼 side effect가 없는 읽기 전용 connector로 검증해야 해요. search, describe, connector method 호출과 최종 result shaping이 한 번에 동작하는지 확인하는 거예요. 비교 기준은 모델 라운드트립 횟수가 아니라, 중간 데이터가 모델 컨텍스트로 얼마나 덜 돌아오는지예요.
 
-그다음 requiresApproval: true인 method가 실제로 paused 상태와 pending action으로 멈추는지, 같은 execution을 replay할 때 codemode.step()으로 기록한 작업이 기대대로 재사용되는지 확인해야 해요. 이 두 가지 검증이 끝나기 전에는 쓰기 작업이나 운영 자동화에 연결하면 안 돼요.
+그다음 requiresApproval: true인 method가 실제로 paused 상태와 pending action으로 멈추는지 확인해야 해요. 같은 execution을 replay할 때 codemode.step()으로 기록한 작업이 기대대로 재사용되는지도 봐야 하고요. 이 두 가지 검증이 끝나기 전에는 쓰기 작업이나 운영 자동화에 연결하면 안 돼요.
 
 Code Mode의 가치는 단순히 도구 호출을 줄이는 데 있지 않아요. 도구가 많고 중간 결과가 큰 작업에서 제어 흐름과 데이터 축약을 sandbox로 옮기고, 모델에는 판단에 필요한 결과만 전달하는 데 있어요.
 

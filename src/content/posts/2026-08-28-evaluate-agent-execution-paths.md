@@ -15,7 +15,7 @@ category: backend
 
 LLM 애플리케이션을 처음 만들 때는 대개 출력부터 평가해요. 질문을 넣고 답변이 맞는지 확인하는 식이죠. OpenEvals README도 eval을 전통적인 소프트웨어 테스트와 비슷하다고 설명하며, LLM 애플리케이션을 production으로 가져가기 위한 출발점이라고 말해요. OpenAI Evals 문서도 모델 업그레이드와 프롬프트 변경, 모델 비교, prompt regression 방지에 eval이 필요하다고 설명해요.
 
-이 관점은 지금도 중요해요. 단순 분류나 요약, 포맷 변환처럼 “입력 → 출력” 구조가 분명한 작업은 최종 출력만 평가해도 많은 문제를 잡을 수 있거든요. OpenAI 문서의 IT ticket categorization 예시는 ticket text를 Hardware, Software, Other 중 하나로 분류하고, string_check grader로 정답 라벨과 정확히 같은지 비교해요.
+이 관점은 지금도 중요해요. 단순 분류나 요약, 포맷 변환처럼 “입력 → 출력” 구조가 분명한 작업은 최종 출력만 평가해도 많은 문제를 잡을 수 있거든요. OpenAI 문서의 IT ticket categorization 예시는 ticket text를 Hardware, Software, Other 중 하나로 분류해요. string_check grader로 정답 라벨과 정확히 같은지 비교하고요.
 
 ```bash
 curl https://api.openai.com/v1/evals \
@@ -53,7 +53,7 @@ code review agent라면 최종 답변이 “전반적으로 괜찮다”로 끝�
 
 ## trajectory는 실행 로그가 아니라 평가 단위다
 
-trajectory는 에이전트가 실행되는 동안 거친 메시지와 도구 호출의 sequence예요. AgentEvals와 OpenEvals 문서는 모두 agent trajectory를 OpenAI-style messages의 list로 나타낼 수 있다고 설명하죠. user message와 assistant message, assistant의 tool_calls에 tool role의 tool result와 마지막 assistant response까지 들어가요.
+trajectory는 에이전트가 실행되는 동안 거친 메시지와 도구 호출의 sequence예요. AgentEvals와 OpenEvals 문서는 모두 agent trajectory를 OpenAI-style messages의 list로 나타낼 수 있다고 설명하죠. user message와 assistant message, assistant의 tool_calls가 여기에 들어가요. tool role의 tool result와 마지막 assistant response도 포함되고요.
 
 AgentEvals README의 TypeScript 예시는 날씨 질문을 처리하는 가장 작은 trajectory를 보여줘요. 사용자가 “SF 날씨”를 물으면 assistant가 get_weather tool을 호출하고, tool result를 받은 다음 최종 응답을 만들어요.
 
@@ -124,7 +124,7 @@ LLM-as-judge 방식은 사람이 정답 경로를 촘촘히 작성하기 어려�
 
 이 방식은 경로의 “품질”까지 볼 수 있다는 장점이 있어요. strict match는 도구 순서가 달라지면 실패하지만, 순서가 달라도 괜찮은 경우가 있어요. 도구 이름은 맞아도 목적과 무관한 호출이 끼어들 수도 있죠. judge는 “이 경로가 요청 해결에 합리적인가”, “불필요한 우회가 있는가” 같은 질문을 다룰 수 있어요.
 
-CI gate의 첫 줄부터 LLM judge로 세우는 일은 조심해야 해요. judge도 모델 호출이라 비용과 지연이 생기고, 판정이 완전히 결정적이지 않으니까요. LangSmith 문서는 offline evaluation과 online evaluation을 구분해요. 개발 중에는 curated dataset으로 version을 비교해 regression을 찾고, 운영 중에는 live traffic을 sampling, filter, reference-free judge, format validation 같은 방식으로 모니터링해요.
+CI gate의 첫 줄부터 LLM judge로 세우는 일은 조심해야 해요. judge도 모델 호출이라 비용과 지연이 생기고, 판정이 완전히 결정적이지 않으니까요. LangSmith 문서는 offline evaluation과 online evaluation을 구분해요. 개발 중에는 curated dataset으로 version을 비교해 regression을 찾아요. 운영 중에는 live traffic을 sampling, filter, reference-free judge, format validation 같은 방식으로 모니터링하고요.
 
 처음에는 deterministic evaluator부터 두는 편이 안전해요. “필수 도구가 호출됐는가”, “실패 시 fallback evidence가 남았는가”, “retry-run이 가능한 trigger와 input snapshot이 있는가”는 코드 규칙으로 검사할 수 있거든요. LLM judge는 그다음에 경로의 자연스러움이나 과잉 탐색 여부를 살피는 보조 평가로 두는 편이 나아요.
 
@@ -142,7 +142,7 @@ Slack 기반 멀티 에이전트 시스템에는 평가 단위로 삼을 만한 
 
 `/review-pr`는 agent/code-reviewer, github, model-router, pr-review-loop, slack에 걸쳐 있어요. 최소 기준 경로에는 PR detail 조회와 diff 조회, code-reviewer provider 호출과 Slack formatter 응답이 들어가요. 여기서 superset match를 쓰면 추가 메타데이터 조회는 허용하면서 diff 조회 누락은 막을 수 있어요.
 
-`/today`는 agent/pm, github, daily-plan, model-router, slack과 맞닿아 있어요. 사용자의 자연어 입력을 받고 GitHub assigned task를 조회한 뒤, 전일 plan이나 기존 daily plan context를 합쳐 PM agent provider를 호출해요. 마지막에 Slack 응답으로 정리하는 경로가 기준이 되죠. GitHub가 실패해도 사용자 입력만으로 graceful fallback이 작동해야 한다면 실패 trajectory도 별도 fixture로 둬야 하고요.
+`/today`는 agent/pm, github, daily-plan, model-router, slack과 맞닿아 있어요. 사용자의 자연어 입력을 받고 GitHub assigned task를 조회해요. 전일 plan이나 기존 daily plan context를 합친 뒤 PM agent provider를 호출하고요. 마지막에 Slack 응답으로 정리하는 경로가 기준이 되죠. GitHub가 실패해도 사용자 입력만으로 graceful fallback이 작동해야 한다면 실패 trajectory도 별도 fixture로 둬야 하고요.
 
 `/worklog`는 agent/work-reviewer, agent-run, EvidenceRecord, model-router, slack을 살펴요. 업무 로그 초안은 근거가 빈약하면 그럴듯한 문장만 남기 쉬우니까요. “정량 근거가 EvidenceRecord에 남았는가”, “근거 누락 시 사용자에게 한계를 드러냈는가”, “불필요한 모델 재호출이 없었는가”가 출력 문장보다 먼저 볼 지표가 되죠.
 

@@ -16,7 +16,7 @@ Slack에서 에이전트에게 “오늘 할 일 정리해 줘”라고 시키�
 
 LangChain 문서는 Deep Agents를 “agent harness”라고 설명하는데, 기존 tool-calling loop를 버리는 구조는 아니에요. LLM이 메시지를 보고 도구를 호출한 뒤 결과를 읽고 다음 행동을 정하는 기본 루프는 그대로 두고, 여기에 장기 작업에 필요한 장치를 기본으로 붙이는 거죠.
 
-LangChain이 반복해서 언급하는 구성요소는 planning, filesystem, subagents, detailed prompts예요. JavaScript reference도 deepagents를 “batteries-included agent harness”라고 부르며, 기본 기능에 write_todos와 파일 도구, task subagent에 더해 smart defaults와 context management까지 나열해요. 공식 JavaScript reference의 quickstart에서는 별도 도구나 프롬프트를 거의 붙이지 않고도 createDeepAgent를 만들 수 있어요.
+LangChain이 반복해서 언급하는 구성요소는 planning, filesystem, subagents, detailed prompts예요. JavaScript reference도 deepagents를 “batteries-included agent harness”라고 불러요. 기본 기능에는 write_todos와 파일 도구, task subagent가 들어가고, smart defaults와 context management까지 나열돼 있죠. 공식 JavaScript reference의 quickstart에서는 별도 도구나 프롬프트를 거의 붙이지 않고도 createDeepAgent를 만들 수 있어요.
 
 ```typescript
 import { createDeepAgent } from "deepagents";
@@ -41,7 +41,7 @@ const result = await agent.invoke({
 
 두 번째 장치는 virtual filesystem이에요. 문서에 따르면 Deep Agents에는 ls, read_file, write_file, edit_file이 들어 있고 glob과 grep도 기본 파일 도구예요. read_file은 offset/limit로 큰 파일의 일부만 읽고, glob은 **/*.py 같은 패턴을 찾으며, sandbox backend가 있으면 execute도 사용할 수 있어요.
 
-LangChain 블로그는 0.2에서 filesystem backend가 더 중요해졌다고 설명해요. 이전에는 LangGraph state 위의 virtual filesystem이었지만, 0.2부터는 Backend 추상화로 LangGraph State와 LangGraph Store는 물론 실제 로컬 파일시스템과 composite backend까지 연결할 수 있어요.
+LangChain 블로그는 0.2에서 filesystem backend가 더 중요해졌다고 설명해요. 이전에는 LangGraph state 위의 virtual filesystem이었어요. 0.2부터는 Backend 추상화로 LangGraph State와 LangGraph Store를 붙일 수 있고, 실제 로컬 파일시스템과 composite backend까지 연결돼요.
 
 filesystem은 단순한 첨부 저장소가 아니에요. 조사 원문과 diff 분석 로그, 초안, 검증 결과, 실패한 도구 호출의 흔적을 파일로 내리면 메인 대화 컨텍스트가 덜 오염되거든요. LangChain 블로그가 언급한 large tool result eviction도 같은 방향이라, 큰 도구 결과가 토큰 임계값을 넘으면 파일시스템에 덤프하고 오래된 대화 이력은 summarization으로 압축해요.
 
@@ -49,7 +49,7 @@ filesystem은 단순한 첨부 저장소가 아니에요. 조사 원문과 diff 
 
 전문 역할을 붙일 수도 있지만, 더 본질적인 가치는 격리와 압축이에요.
 
-subagent 설정에는 별도 필드가 있어요. 문서에서는 name, description, systemPrompt를 필수로 정하고, 필요하면 tools, model, middleware, interruptOn에 skills, responseFormat, permissions까지 줄 수 있어요.
+subagent 설정에는 별도 필드가 있어요. 문서에서는 name, description, systemPrompt를 필수로 정해요. 필요하면 tools, model, middleware, interruptOn을 줄 수 있고, skills와 responseFormat, permissions도 설정할 수 있죠.
 
 ```typescript
 const agent = createDeepAgent({

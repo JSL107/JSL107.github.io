@@ -9,7 +9,7 @@ category: backend
 
 Slack 명령 하나가 LLM 호출 한 번으로 끝난다면 모델 라우팅을 코드에 넣어도 큰 문제는 없어요. pm 에이전트에는 이 모델, code-reviewer에는 저 모델을 쓰고, 실패하면 예외를 던져요. 배포 전에 테스트하고 문제가 생기면 다시 고치면 돼요.
 
-에이전트가 늘어나면 상황이 달라져요. agent/pm이 매일 계획을 만들고 agent/work-reviewer가 업무 로그를 요약하는 사이, agent/code-reviewer는 PR diff를 읽고 router는 자연어 멘션을 받아 worker를 골라요. agent/be-sre, agent/be-test, agent/impact-reporter, ops-supervisor, autopilot 같은 장기 실행 흐름까지 붙으면 “어떤 모델을 쓸까?”보다 더 중요한 질문이 생겨요.
+에이전트가 늘어나면 상황이 달라져요. agent/pm은 매일 계획을 만들고, agent/work-reviewer는 업무 로그를 요약해요. agent/code-reviewer는 PR diff를 읽고, router는 자연어 멘션을 받아 worker를 골라요. 여기에 agent/be-sre, agent/be-test, agent/impact-reporter 같은 워커와 ops-supervisor, autopilot 같은 장기 실행 흐름까지 붙어요. 그러면 “어떤 모델을 쓸까?”보다 더 중요한 질문이 생겨요.
 
 어떤 에이전트가 비용을 많이 쓰는지, 어떤 Slack workspace에서 실패가 잦은지를 알아야 하고, rate limit이 provider 문제인지 특정 agent의 폭주인지도 구분해야 해요. 실패했을 때 같은 품질의 모델로만 fallback할지 싼 모델로 내려갈지도 정해야 하죠. 이런 판단을 매번 NestJS 코드의 ModelRouterUsecase에 넣고 배포로 푸는 건 느려요.
 
@@ -19,7 +19,7 @@ LiteLLM AI Gateway가 필요한 자리가 여기예요. 앱 안의 라우팅 로
 
 LiteLLM 문서는 Python SDK와 Proxy Server를 함께 설명해요. SDK는 여러 provider를 completion() 인터페이스로 호출하고, 응답은 OpenAI Chat Completions 형식에 맞춰 받아요. 공식 문서와 GitHub README는 OpenAI, Anthropic, Gemini, Azure, Bedrock, Vertex AI, Ollama 등 100개 이상의 provider를 OpenAI 형식으로 호출할 수 있다고 강조해요.
 
-NestJS 에이전트 시스템에는 SDK보다 Proxy Server가 더 중요해요. Proxy는 FastAPI 기반 gateway처럼 앱과 provider 사이에 서서 앱이 OpenAI 호환 API 하나만 알면 되도록 만들고, 실제 provider key와 모델 매핑은 LiteLLM 쪽에 남겨요. Docker quickstart를 쓰면 gateway는 http://localhost:4000에 뜨고, Admin UI는 /ui에서 열어요.
+NestJS 에이전트 시스템에는 SDK보다 Proxy Server가 더 중요해요. Proxy는 FastAPI 기반 gateway처럼 앱과 provider 사이에 서요. 앱은 OpenAI 호환 API 하나만 알면 되고, 실제 provider key와 모델 매핑은 LiteLLM 쪽에 남아요. Docker quickstart를 쓰면 gateway는 http://localhost:4000에 뜨고, Admin UI는 /ui에서 열어요.
 
 문서의 JavaScript 예시를 보면 이 구조가 잘 드러나요. OpenAI SDK는 그대로 쓰고 baseURL만 LiteLLM으로 바꿔요.
 
@@ -39,7 +39,7 @@ const response = await client.chat.completions.create({
 console.log(response.choices[0].message.content);
 ```
 
-NestJS에서는 이 점이 가장 큰 장점이에요. ModelRouterUsecase가 provider별 SDK를 직접 알 필요가 줄고, 앱은 pm-agent, work-reviewer, code-reviewer, router-worker 같은 gateway model alias만 호출하면 되니까요. alias가 실제로 연결할 provider와 모델은 LiteLLM 설정이나 Admin UI에서 바꿀 수 있어요.
+NestJS에서는 이 점이 가장 큰 장점이에요. ModelRouterUsecase가 provider별 SDK를 직접 알 필요가 줄어요. 앱은 pm-agent, work-reviewer, code-reviewer, router-worker 같은 gateway model alias만 호출하면 되고요. alias가 실제로 연결할 provider와 모델은 LiteLLM 설정이나 Admin UI에서 바꿀 수 있어요.
 
 기존에는 “AgentType → provider”를 바꿀 때마다 코드를 배포했어요. LiteLLM을 쓰면 앱은 “AgentType → gateway alias”까지만 알아요. 이후의 provider 운영 정책은 gateway가 맡거든요.
 
@@ -65,7 +65,7 @@ curl -sSL https://docs.litellm.ai/docker-compose.yml | docker compose -f - up -d
 
 quickstart는 빠르게 시작하기 위한 구성이지만, 운영 전에는 LITELLM_SALT_KEY를 꼭 확인해야 해요. 문서에 따르면 이 값은 provider API key를 암호화하는 데 쓰이는데, quickstart compose에는 placeholder가 들어 있어요. 계속 운영할 환경이라면 긴 random 값으로 바꾸고 이후에는 변경하면 안 돼요. 값을 바꾸면 기존에 암호화한 credential을 복호화할 수 없으니까요.
 
-다음으로 살펴볼 경계는 master key와 virtual key예요. virtual key 문서에 따르면 key management에는 Postgres DATABASE_URL과 master key가 필요하고, master key는 Proxy Admin key 역할을 하며 sk-로 시작해야 해요. 설정 파일의 general_settings.master_key에 넣거나 LITELLM_MASTER_KEY 환경변수로 줄 수 있어요.
+다음으로 살펴볼 경계는 master key와 virtual key예요. virtual key 문서에 따르면 key management에는 Postgres DATABASE_URL과 master key가 필요해요. master key는 Proxy Admin key 역할을 하며 sk-로 시작해야 하고요. 설정 파일의 general_settings.master_key에 넣거나 LITELLM_MASTER_KEY 환경변수로 줄 수 있어요.
 
 문서의 virtual key 생성 예시는 master key로 /key/generate를 호출해요. 아래는 문서 원문의 모델명과 식별자를 내 쪽 alias로 바꿔 적은 형태예요.
 
@@ -87,7 +87,7 @@ curl 'http://0.0.0.0:4000/key/generate' \
 
 ## Spend log는 AgentRun과 연결할 수 있어야 의미가 있다
 
-LiteLLM cost tracking 문서는 spend가 자동으로 추적되는 조건을 분명히 밝혀요. Proxy에 database와 virtual key를 설정하고 요청을 proxy로 보내면 되고, known model의 비용은 LiteLLM의 model cost map을 기준으로 계산해요. 비용은 response header의 x-litellm-response-cost와 database의 LiteLLM_SpendLogs, UI의 Usage tab에서 확인할 수 있죠.
+LiteLLM cost tracking 문서는 spend가 자동으로 추적되는 조건을 분명히 밝혀요. Proxy에 database와 virtual key를 설정하고 요청을 proxy로 보내면 돼요. known model의 비용은 LiteLLM의 model cost map을 기준으로 계산하고요. 비용은 response header의 x-litellm-response-cost와 database의 LiteLLM_SpendLogs, UI의 Usage tab에서 확인할 수 있죠.
 
 문서의 cURL 예시는 user와 metadata.tags를 함께 보내요. 필드 이름은 그대로 두고 값만 내 시스템 식별자로 옮겨 적으면 이렇게 돼요.
 
@@ -158,13 +158,13 @@ router_settings:
 
 agent/vacation처럼 자연어 파라미터만 추출하는 작업은 fallback 범위를 넓혀도 괜찮을 수 있어요. 하지만 agent/code-reviewer, agent/be-schema, agent/review-reply-judge처럼 판단 품질이 결과물의 신뢰도와 직결되는 agent는 후보를 좁혀야 하죠. context window 초과 fallback도 같아서, 긴 PR diff를 더 큰 context 모델로 넘기는 건 자연스럽지만 더 작은 모델로 줄이면 눈에 띄지 않는 품질 회귀가 생길 수 있어요.
 
-테스트 방식도 주의해야 해요. reliability 문서에 따르면 LiteLLM Proxy v1.85.0부터 mock-testing flag가 incoming Proxy request에서 제거돼, mock_testing_fallbacks와 mock_testing_context_fallbacks, mock_testing_content_policy_fallbacks는 효과가 없어요. Proxy fallback을 검증하려면 비운영 환경에서 실제 provider error를 일으킨 뒤 정상 요청으로 동작을 확인해야 해요.
+테스트 방식도 주의해야 해요. reliability 문서에 따르면 LiteLLM Proxy v1.85.0부터 mock-testing flag가 incoming Proxy request에서 제거돼요. mock_testing_fallbacks와 mock_testing_context_fallbacks, mock_testing_content_policy_fallbacks는 효과가 없죠. Proxy fallback을 검증하려면 비운영 환경에서 실제 provider error를 일으킨 뒤 정상 요청으로 동작을 확인해야 해요.
 
 ## 로그와 거버넌스는 기본값을 먼저 확인해야 한다
 
 LLM gateway를 세우면 모든 요청이 한곳을 지나가요. 관측성은 좋아지지만, 민감한 prompt와 response도 한곳에 모일 수 있죠.
 
-LiteLLM UI Logs 문서는 기본값을 분명히 설명해요. success logs와 error logs는 기본으로 tracked 되지만, request/response content는 기본으로 저장하지 않고 store_prompts_in_spend_logs로 opt-in해야 해요. 기본적으로 prompt와 response 본문을 남기지 않으니 안전한 기본값에 가까워요.
+LiteLLM UI Logs 문서는 기본값을 분명히 설명해요. success logs와 error logs는 기본으로 tracked 돼요. request/response content는 기본으로 저장하지 않아서 store_prompts_in_spend_logs로 opt-in해야 하고요. 기본적으로 prompt와 response 본문을 남기지 않으니 안전한 기본값에 가까워요.
 
 prompt 저장을 켜면 실패한 에이전트 실행의 실제 입력을 UI에서 볼 수 있어요. 다만 업무 데이터나 개인정보, credential fragment가 prompt에 섞일 수 있다면, 또 공개 저장소에 붙일 수 없는 데이터라면 먼저 꺼두는 게 맞아요. config의 litellm_settings.turn_off_message_logging은 messages/responses logging을 막고 metadata는 남기는 용도로 설명돼요.
 
@@ -176,7 +176,7 @@ LiteLLM은 open-source gateway로 Admin UI, virtual key, spend tracking, fallbac
 
 model-router와 agent-run 쪽 경계는 앞에서 짚었으니, 아직 안 나온 두 곳만 덧붙일게요.
 
-하나는 slack과 router예요. Slack slash command에서는 사용자가 오래 기다리지 않게 해야 하고, 앞에 gateway가 한 겹 서면 고장 날 수 있는 자리도 한 겹 늘어나니 gateway 장애와 provider 장애를 구분해 메시지를 내려야 해요. router는 자연어 멘션을 여러 worker로 dispatch하니, worker별로 virtual key나 alias를 나눠 두면 폭주한 worker만 골라서 rate limit으로 막을 수 있어요.
+하나는 slack과 router예요. Slack slash command에서는 사용자가 오래 기다리지 않게 해야 하고, 앞에 gateway가 한 겹 서면 고장 날 수 있는 자리도 한 겹 늘어나니 gateway 장애와 provider 장애를 구분해 메시지를 내려야 해요. router는 자연어 멘션을 여러 worker로 dispatch해요. worker별로 virtual key나 alias를 나눠 두면 폭주한 worker만 골라서 rate limit으로 막을 수 있고요.
 
 다른 하나는 자동 실행 계열이에요. autopilot, ops-supervisor, study-brief-cron에 resume-calibration-cron, job-application-nudge-cron이 여기 들어가죠. 사람이 직접 부르지 않으니 예산 경계가 더 중요한데, 정작 interactive command보다 눈에 덜 띄어요. 새벽에 조용히 돌다가 한참 뒤 청구서로 알게 되는 쪽이 여기예요. 별도 virtual key나 team으로 묶고 max budget과 RPM/TPM을 낮게 잡고 시작하는 편이 안전해요.
 

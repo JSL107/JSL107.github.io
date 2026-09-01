@@ -20,7 +20,7 @@ Slack 기반 에이전트가 read-only 도구를 넘어 외부 시스템까지 �
 
 기존 시스템은 Slack bot token이나 GitHub app token 같은 서비스 단위 credential로 모든 작업을 처리해요. 사용자가 승인한 OAuth token을 worker queue나 DB에 저장해 두었다가 나중에 쓰기도 해요. 내부 API를 shared secret이나 service account로 묶어, 백엔드에서 온 요청이라는 이유만으로 그대로 신뢰하기도 해요.
 
-호출 체인이 짧을 때는 편해요. 하지만 Slack command가 backend agent를 부르고 agent가 model-router를 거쳐 LLM과 github 모듈, Prisma adapter, crawler worker까지 호출하면 중요한 정보가 사라져요.
+호출 체인이 짧을 때는 편해요. 하지만 Slack command가 backend agent를 부르고, agent가 model-router를 거치면 얘기가 달라져요. 여기서 LLM과 github 모듈, Prisma adapter, crawler worker까지 호출하면 중요한 정보가 사라지거든요.
 
 단순 bearer token만 넘기면 downstream 서비스는 요청의 성격을 판단하기 어려워요. agent/code-reviewer가 사용자 A의 PR 리뷰 요청 범위에서 만든 GitHub comment인지 알 수 없거든요. 로그에 bot 또는 backend만 남으면 나중에 권한을 줄이기도, 거절 사유를 설명하기도 힘들어져요.
 
@@ -32,15 +32,15 @@ IETF의 AI Agent Authentication and Authorization draft는 AI agent를 LLM과 �
 
 AI agent auth draft는 Agent Identity Management System, 줄여서 AIMS라는 개념 모델을 둬요. AIMS는 제품 이름이 아니에요.
 
-agent identifier와 agent credential, attestation, credential provisioning을 포함하고 authentication, authorization, observability and remediation도 들어가요. policy와 compliance까지 아우르며 에이전트 workload의 identity와 permission을 관리해요.
+agent identifier와 agent credential, attestation, credential provisioning을 포함해요. authentication, authorization, observability and remediation도 들어가고요. policy와 compliance까지 아우르며 에이전트 workload의 identity와 permission을 관리해요.
 
-내부 시스템 언어로 풀면 agent-registry는 agent identifier와 display metadata를 맡아요. agent-run에는 특정 실행의 actor, trigger, approval, evidence에 tool call audit까지 묶어 실행 단위로 기록해요. model-router는 어떤 agent type이 어느 provider를 호출했는지 남기고, github와 slack, crawler는 resource server 또는 tool adapter 역할을 해요.
+내부 시스템 언어로 풀면 agent-registry는 agent identifier와 display metadata를 맡아요. agent-run에는 특정 실행의 actor, trigger, approval, evidence에 tool call audit까지 묶어 실행 단위로 기록해요. model-router는 어떤 agent type이 어느 provider를 호출했는지 남겨요. github와 slack, crawler는 resource server 또는 tool adapter 역할을 하고요.
 
 AIMS가 당장 별도 서버를 도입하라는 뜻은 아니에요. 도메인 모델에 “에이전트도 인증·인가 대상”이라는 축을 더하라는 요구에 가까워요.
 
 Microsoft Entra Agent ID는 agent identity를 일반 사용자나 app registration과 구분해요. agent identity는 자체 credential이 없는 특별한 service principal이고, agent identity blueprint가 대신 token을 얻어요. accountable human 또는 group을 뜻하는 sponsor도 두고요.
 
-권한 면에서는 Global Administrator와 Privileged Role Administrator를 차단하고, User Administrator 같은 고위험 directory role과 custom role, role-assignable group membership도 제한해요. 에이전트에는 sponsor와 권한 제한, 조건부 접근, 감사까지 갖춘 별도의 수명주기가 필요하다는 거죠. 벤더 기능을 그대로 쓰지 않더라도 이런 원칙은 가져올 수 있어요.
+권한 면에서는 Global Administrator와 Privileged Role Administrator를 차단해요. User Administrator 같은 고위험 directory role과 custom role, role-assignable group membership도 제한하고요. 에이전트에는 sponsor와 권한 제한, 조건부 접근, 감사까지 갖춘 별도의 수명주기가 필요하다는 거죠. 벤더 기능을 그대로 쓰지 않더라도 이런 원칙은 가져올 수 있어요.
 
 ## Delegation chaining은 맥락을 다시 표현한다
 
@@ -50,7 +50,7 @@ OAuth Identity and Authorization Chaining draft는 여러 trust domain을 지나
 
 draft의 기본 흐름은 OAuth 2.0 Token Exchange(RFC 8693)에 JWT bearer assertion grant(RFC 7523)를 조합해요. 먼저 domain A에서 받은 토큰을 domain A의 authorization server에서 교환해요.
 
-그 결과 domain B authorization server를 대상으로 한 JWT authorization grant를 받고, 이를 domain B에 제시해 access token을 얻어요. access token 하나를 계속 릴레이하는 게 아니라, trust boundary를 넘을 때마다 맥락을 검증 가능한 grant로 다시 표현하는 방식이에요.
+그 결과 domain B authorization server를 대상으로 한 JWT authorization grant를 받아요. 이를 domain B에 제시해 access token을 얻고요. access token 하나를 계속 릴레이하는 게 아니라, trust boundary를 넘을 때마다 맥락을 검증 가능한 grant로 다시 표현하는 방식이에요.
 
 ```plain text
 POST /auth/token HTTP/1.1
@@ -82,9 +82,9 @@ resource는 대상 authorization server를, subject_token은 근거가 된 token
 
 ## Transaction token으로 한 번의 행위를 묶기
 
-Transaction Tokens draft는 call chain 전체에 필요한 정보를 전파하는 signed JWT를 설명해요. user identity와 workload identity, authorization context, request context를 담으며, 한 trust domain 안에서 쓰고 수명이 짧고 특정 transaction에 묶여 있어요.
+Transaction Tokens draft는 call chain 전체에 필요한 정보를 전파하는 signed JWT를 설명해요. user identity와 workload identity, authorization context, request context를 담아요. 한 trust domain 안에서 쓰며 수명이 짧고 특정 transaction에 묶여 있고요.
 
-Txn-Token은 OAuth access token이나 authentication credential이 아니라, trust domain 내부의 downstream workload가 후속 호출을 authorize할 때 쓰는 것이에요. draft에 따르면 각 trust domain에는 정확히 하나의 logical Transaction Token Service가 있어야 해요.
+Txn-Token은 OAuth access token이나 authentication credential이 아니에요. trust domain 내부의 downstream workload가 후속 호출을 authorize할 때 쓰죠. draft에 따르면 각 trust domain에는 정확히 하나의 logical Transaction Token Service가 있어야 해요.
 
 이 개념을 적용하면 worker queue의 payload에 장기 refresh token을 넣지 않아도 돼요.
 
@@ -140,7 +140,7 @@ grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange
 
 ## 내부 모델은 표준보다 먼저 준비할 수 있다
 
-OAuth 2.0 Token Exchange인 RFC 8693은 이미 RFC지만, AI agent auth draft와 identity chaining draft, transaction token draft는 아직 Internet-Draft 단계예요. Transaction Tokens는 OAuth WG 문서로 진행 중이라 draft가 바뀔 수 있고요.
+OAuth 2.0 Token Exchange인 RFC 8693은 이미 RFC예요. AI agent auth draft와 identity chaining draft, transaction token draft는 아직 Internet-Draft 단계고요. Transaction Tokens는 OAuth WG 문서로 진행 중이라 draft가 바뀔 수 있고요.
 
 특정 구현체에 내부 모델을 강하게 결합하면 이후 변화에 끌려갈 수 있어요. 지금은 특정 라이브러리를 고르기보다 내부 도메인 모델부터 이 문제의식에 맞춰야 해요.
 
@@ -150,7 +150,7 @@ OAuth trust domain을 제대로 나누지 않고 identity chaining이라는 이�
 
 write action과 장기 worker, 다중 에이전트 위임이 함께 등장하고 외부 SaaS 호출과 사용자별 승인 범위까지 있다면 미리 모델을 잡아야 해요. 처음부터 완성형 token service를 만들 필요는 없어요.
 
-AgentRun에 actor와 delegation field를 남기는 것부터 시작해, tool call audit을 분리하고 scope vocabulary를 좁게 정의하는 일까지 먼저 할 수 있어요.
+AgentRun에 actor와 delegation field를 남기는 것부터 시작할 수 있어요. tool call audit을 분리하고 scope vocabulary를 좁게 정의하는 일도 먼저 할 수 있고요.
 
 ## AgentRun을 권한 체인의 진실 원장으로 만들기
 
@@ -158,7 +158,7 @@ Slack 기반 LLM 멀티 에이전트 시스템에서 먼저 바꿀 모듈은 다
 
 agent-registry는 agent/code-reviewer와 agent/cto, agent/be, agent/be-schema, agent/issue-labeler, agent/be-fix를 같은 봇으로 취급하면 안 되고 각각 다른 권한 경계로 관리해야 해요. PR에 코멘트를 남기는 agent와 schema 변경 제안을 만드는 agent도 구분해야 해요. 둘을 같은 credential로 묶으면 안 되니까요.
 
-agent-run은 실행 단위의 진실 원장이 되어야 해요. begin → run → finish 라이프사이클과 evidence record에 actorUserId, agentIdentity, delegatedScopes, approvalId, toolCallAuditId를 더해야 해요.
+agent-run은 실행 단위의 진실 원장이 되어야 해요. begin → run → finish 라이프사이클과 evidence record에 항목을 더해야 해요. actorUserId, agentIdentity, delegatedScopes, approvalId, toolCallAuditId가 필요하죠.
 
 actorUserId는 Slack command 또는 natural language mention을 시작한 사람이고, agentIdentity는 판단하고 도구를 호출한 agent workload예요. delegatedScopes에는 이번 실행에서 허용된 범위를 담고, approvalId는 사람이 승인한 write action의 근거가 되죠. toolCallAuditId는 GitHub, Prisma, crawler, CLI provider의 세부 호출 기록과 연결돼요.
 
