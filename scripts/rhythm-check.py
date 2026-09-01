@@ -14,6 +14,10 @@ import statistics
 import sys
 from collections import Counter
 
+# 해요체의 기본 종결. 이 어미가 10~20% 나오는 것은 자연스러워 신호가 아니다.
+# 편중이 문제가 되는 쪽은 문장을 이어 붙일 때 습관적으로 붙는 연결형 종결이다.
+PLAIN_ENDINGS = {'해요', '있어요', '돼요', '예요', '이에요', '없어요', '아니에요', '가요', '와요'}
+
 CONNECTIVES = [
     '고 ', '며 ', '지만 ', '는데 ', '면서 ', '어서 ', '아서 ', '니까 ', '으니 ',
     '도록 ', '다가 ', '거나 ', '든지 ', '기에 ', '느라 ', '자마자', '라서 ', '으면서',
@@ -37,6 +41,11 @@ def sentences(body):
     return [s.strip() for s in re.split(r'(?<=\.)\s+', prose) if len(s.strip()) > 5]
 
 
+def endings_of(sentence):
+    found = re.search(r'([가-힣]{1,4})\.$', sentence)
+    return found.group(1) if found else ''
+
+
 def metrics(path):
     body = split_parts(open(path, encoding='utf-8').read())[1]
     sents = sentences(body)
@@ -44,7 +53,19 @@ def metrics(path):
     clauses = [1 + s.count(',') + sum(s.count(c) for c in CONNECTIVES) for s in sents]
     endings = [m.group(1) for m in (re.search(r'([가-힣]{1,4})\.$', s) for s in sents) if m]
     words = [len(s.split()) for s in sents]
+    # 최빈 종결어미 집중도. '다양도'(종류 수)는 특정 어미가 몰리는 것을 못 잡는다.
+    # 예: -고요 하나가 14%를 차지해도 종류가 많으면 다양도는 높게 나온다.
+    marked = [e for e in endings if e not in PLAIN_ENDINGS]
+    ranked = Counter(marked).most_common(1)
+    top_share = ranked[0][1] / len(endings) if ranked and endings else 0
+    top_name = ranked[0][0] if ranked else ''
+    streak = sum(1 for i in range(len(sents) - 1)
+                 if endings_of(sents[i]) == endings_of(sents[i + 1]) != ''
+                 and endings_of(sents[i]) not in PLAIN_ENDINGS)
     return {
+        'top_share': top_share,
+        'top_name': top_name,
+        'streak': streak,
         'n': len(sents),
         'words': statistics.mean(words),
         'avg': statistics.mean(lens),
@@ -95,13 +116,16 @@ def verify(ref, path):
 def main():
     mode = sys.argv[1]
     if mode == 'metrics':
-        print(f"{'파일':<44}{'문장':>5}{'어절':>7}{'절/문':>7}{'홑문장':>7}{'자수':>7}{'어미':>7}")
+        print(f"{'파일':<40}{'문장':>5}{'어절':>7}{'절/문':>6}{'홑문장':>6}{'최빈(연결형)':>14}{'연속':>5}")
         for path in sys.argv[2:]:
             m = metrics(path)
             name = path.split('/')[-1].replace('.md', '')[:44]
-            flag = '' if 11.0 <= m['words'] <= 13.0 else ('  높음' if m['words'] > 13.0 else '  낮음')
-            print(f"{name:<44}{m['n']:>5}{m['words']:>7.1f}{m['clause']:>7.2f}"
-                  f"{m['single'] * 100:>6.0f}%{m['avg']:>7.1f}{m['endings'] * 100:>6.0f}%{flag}")
+            flag = '' if 11.0 <= m['words'] <= 13.0 else ('  어절높음' if m['words'] > 13.0 else '  어절낮음')
+            if m['top_share'] > 0.08 or m['streak'] > 0:
+                flag += '  어미편중'
+            top = f"{m['top_name']} {m['top_share'] * 100:.0f}%"
+            print(f"{name[:38]:<40}{m['n']:>5}{m['words']:>7.1f}{m['clause']:>6.2f}"
+                  f"{m['single'] * 100:>5.0f}%{top:>14}{m['streak']:>5}{flag}")
         return 0
     if mode == 'verify':
         ref, failed = sys.argv[2], False
