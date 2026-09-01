@@ -86,7 +86,7 @@ const agent = createDeepAgent({
 });
 ```
 
-결정 타입도 중요해요. 문서는 approve, edit, reject, respond를 구분해요. 특히 respond는 사람이 도구 역할을 대신해 답할 때 쓰며, side effect가 있는 도구를 거절할 때는 쓰지 말라고 경고하죠. 모델이 그 응답을 성공한 도구 결과로 해석할 수 있기 때문이죠.
+결정 타입도 중요해요. 문서는 approve, edit, reject, respond를 구분해요. 특히 respond는 사람이 도구 역할을 대신해 답할 때 쓰며, side effect가 있는 도구를 거절할 때는 쓰지 말라고 경고해요. 모델이 그 응답을 성공한 도구 결과로 해석할 수 있기 때문이죠.
 
 ## 멀티에이전트는 공짜 성능 향상이 아니다
 

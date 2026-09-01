@@ -75,7 +75,7 @@ export default defineConfig({
 });
 ```
 
-Code Mode Vite plugin은 Worker entry module에서 CodemodeRuntime facet class를 export해요. plugin을 쓰지 않는다면 `export { CodemodeRuntime } from "@cloudflare/codemode";`를 직접 추가해야 하죠. 런타임 상태가 Durable Object facet에 저장되는 건 Workers runtime이 facet class를 ctx.exports에서 찾기 때문이죠.
+Code Mode Vite plugin은 Worker entry module에서 CodemodeRuntime facet class를 export해요. plugin을 쓰지 않는다면 `export { CodemodeRuntime } from "@cloudflare/codemode";`를 직접 추가해야 해요. 런타임 상태가 Durable Object facet에 저장되는 건 Workers runtime이 facet class를 ctx.exports에서 찾기 때문이죠.
 
 connector는 평범한 class예요. name()은 sandbox global 이름이 되고, instructions()는 모델에 사용법을 알려주며, tools()는 호출할 수 있는 method를 정의해요. 문서의 NotesConnector 예시에서는 createNote가 requiresApproval: true로 설정돼 있어 실행 전에 멈추고요.
 
@@ -95,7 +95,7 @@ rollback 가능 여부와 실행 로그에 민감정보가 남지 않는지도 �
 
 첫 번째 후보는 agent/code-reviewer이고, 여기에는 github와 pr-review-loop도 포함돼요. PR detail, file list, diff, 기존 review thread, 체크 결과를 조합해도 모든 diff를 모델에 넣을 필요는 없어요. sandbox 안에서 파일 크기와 확장자로 분류한 뒤 리뷰 가치가 낮은 generated file을 제외하고, “검토해야 할 변경 묶음”만 반환할 수 있죠.
 
-두 번째 후보는 slack-collector와 slack-inbox예요. Slack thread context를 모을 때는 메시지 수와 작성자, 시간 범위, 첨부 링크에 따라 분기가 많아요. connector method로 메시지를 가져온 뒤 bot 메시지와 중복 인용, 오래된 context를 줄이는 거죠.
+두 번째 후보는 slack-collector와 slack-inbox예요. Slack thread context를 모을 때는 메시지 수와 작성자, 시간 범위, 첨부 링크에 따라 분기가 많아요. connector method로 메시지를 가져온 뒤 bot 메시지와 중복 인용, 오래된 context를 줄이는 거예요.
 
 최종 context pack만 반환하는 방식이 맞죠.
 
@@ -109,7 +109,7 @@ rollback 가능 여부와 실행 로그에 민감정보가 남지 않는지도 �
 
 그다음 requiresApproval: true인 method가 실제로 paused 상태와 pending action으로 멈추는지, 같은 execution을 replay할 때 codemode.step()으로 기록한 작업이 기대대로 재사용되는지 확인해야 해요. 이 두 가지 검증이 끝나기 전에는 쓰기 작업이나 운영 자동화에 연결하면 안 돼요.
 
-Code Mode의 가치는 단순히 도구 호출을 줄이는 데 있지 않아요. 도구가 많고 중간 결과가 큰 작업에서 제어 흐름과 데이터 축약을 sandbox로 옮기고, 모델에는 판단에 필요한 결과만 전달하는 데 있죠.
+Code Mode의 가치는 단순히 도구 호출을 줄이는 데 있지 않아요. 도구가 많고 중간 결과가 큰 작업에서 제어 흐름과 데이터 축약을 sandbox로 옮기고, 모델에는 판단에 필요한 결과만 전달하는 데 있어요.
 
 고정된 작업까지 모두 바꾸기보다, 복잡한 orchestration 구간부터 읽기 전용으로 검증하는 게 적절하죠.
 
