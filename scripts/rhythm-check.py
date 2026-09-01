@@ -41,9 +41,20 @@ def sentences(body):
     return [s.strip() for s in re.split(r'(?<=\.)\s+', prose) if len(s.strip()) > 5]
 
 
+# 어미 계열. 있죠·하죠·되죠는 사람 귀에 같은 -죠로 들리는데,
+# 낱말 그대로 세면 서로 다른 어미로 잡혀 편중이 보이지 않는다.
+ENDING_FAMILIES = ('거든요', '더라고요', '잖아요', '고요', '네요', '죠')
+
+
 def endings_of(sentence):
-    found = re.search(r'([가-힣]{1,4})\.$', sentence)
-    return found.group(1) if found else ''
+    found = re.search(r'([가-힣]{1,5})\.$', sentence)
+    if not found:
+        return ''
+    word = found.group(1)
+    for family in ENDING_FAMILIES:
+        if word.endswith(family):
+            return '-' + family
+    return word
 
 
 def metrics(path):
@@ -51,7 +62,7 @@ def metrics(path):
     sents = sentences(body)
     lens = [len(s) for s in sents]
     clauses = [1 + s.count(',') + sum(s.count(c) for c in CONNECTIVES) for s in sents]
-    endings = [m.group(1) for m in (re.search(r'([가-힣]{1,4})\.$', s) for s in sents) if m]
+    endings = [e for e in (endings_of(s) for s in sents) if e]
     words = [len(s.split()) for s in sents]
     # 최빈 종결어미 집중도. '다양도'(종류 수)는 특정 어미가 몰리는 것을 못 잡는다.
     # 예: -고요 하나가 14%를 차지해도 종류가 많으면 다양도는 높게 나온다.
@@ -121,7 +132,7 @@ def main():
             m = metrics(path)
             name = path.split('/')[-1].replace('.md', '')[:44]
             flag = '' if 11.0 <= m['words'] <= 13.0 else ('  어절높음' if m['words'] > 13.0 else '  어절낮음')
-            if m['top_share'] > 0.08 or m['streak'] > 0:
+            if m['top_share'] > 0.12 or m['streak'] > 0:
                 flag += '  어미편중'
             top = f"{m['top_name']} {m['top_share'] * 100:.0f}%"
             print(f"{name[:38]:<40}{m['n']:>5}{m['words']:>7.1f}{m['clause']:>6.2f}"

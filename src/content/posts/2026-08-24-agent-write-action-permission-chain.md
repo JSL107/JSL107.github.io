@@ -12,19 +12,19 @@ Slack 기반 에이전트가 read-only 도구를 넘어 외부 시스템까지 �
 
 에이전트가 GitHub issue에 라벨을 붙이고 PR에 코멘트를 남기면 상황이 달라져요. Prisma schema 변경 제안을 바탕으로 migration 성격의 작업을 만들 때나, crawler job을 등록하고 백엔드 워커에게 구현을 위임하는 경우도 마찬가지고요. 모두 외부 상태를 바꾸는 일이니까요.
 
-사고가 나면 토큰 문자열이 아니라 호출 체인을 확인해야 해요. 최초 사용자가 누구였고 어떤 Slack interaction에서 시작됐는지, 중간에서 어느 에이전트가 판단했고 어떤 권한이 축소되어 전달됐는지를 살펴야 하죠. 어떤 도구 호출이 왜 거절됐는지도 기록에 남아 있어야 하고요.
+사고가 나면 토큰 문자열이 아니라 호출 체인을 확인해야 해요. 최초 사용자가 누구였고 어떤 Slack interaction에서 시작됐는지, 중간에서 어느 에이전트가 판단했고 어떤 권한이 축소되어 전달됐는지를 살펴야 해요. 어떤 도구 호출이 왜 거절됐는지도 기록에 남아 있어야 하고요.
 
-멀티 에이전트 시스템에서 에이전트를 단순한 LLM 호출 함수로 두면 경계가 흐려져요. 독립 식별자와 권한, 승인 이력, 감사 책임을 지닌 workload로 다뤄야 하죠. 그래야 write action을 열 때 최소 권한과 추적 가능성을 함께 확보할 수 있어요.
+멀티 에이전트 시스템에서 에이전트를 단순한 LLM 호출 함수로 두면 경계가 흐려져요. 독립 식별자와 권한, 승인 이력, 감사 책임을 지닌 workload로 다뤄야 해요. 그래야 write action을 열 때 최소 권한과 추적 가능성을 함께 확보할 수 있어요.
 
 ## Bot token과 shared key로는 체인이 남지 않는다
 
-기존 시스템은 Slack bot token이나 GitHub app token 같은 서비스 단위 credential로 모든 작업을 처리해요. 사용자가 승인한 OAuth token을 worker queue나 DB에 저장해 두었다가 나중에 쓰기도 해요. 내부 API를 shared secret이나 service account로 묶어, 백엔드에서 온 요청이라는 이유만으로 그대로 신뢰하기도 하죠.
+기존 시스템은 Slack bot token이나 GitHub app token 같은 서비스 단위 credential로 모든 작업을 처리해요. 사용자가 승인한 OAuth token을 worker queue나 DB에 저장해 두었다가 나중에 쓰기도 해요. 내부 API를 shared secret이나 service account로 묶어, 백엔드에서 온 요청이라는 이유만으로 그대로 신뢰하기도 해요.
 
 호출 체인이 짧을 때는 편해요. 하지만 Slack command가 backend agent를 부르고 agent가 model-router를 거쳐 LLM과 github 모듈, Prisma adapter, crawler worker까지 호출하면 중요한 정보가 사라져요.
 
 단순 bearer token만 넘기면 downstream 서비스는 요청의 성격을 판단하기 어려워요. agent/code-reviewer가 사용자 A의 PR 리뷰 요청 범위에서 만든 GitHub comment인지 알 수 없거든요. 로그에 bot 또는 backend만 남으면 나중에 권한을 줄이기도, 거절 사유를 설명하기도 힘들어져요.
 
-IETF의 AI Agent Authentication and Authorization draft는 AI agent를 LLM과 도구, 서비스, 리소스를 반복해서 호출하는 workload로 봐요. 여기에 WIMSE와 OAuth 2.0 계열, OpenID Shared Signals Framework를 적용하는 방향을 설명하죠. 에이전트에는 안정적인 identifier와 credential을 주고, 사용자를 대신할 때는 delegation context도 보존해야 한다는 거죠.
+IETF의 AI Agent Authentication and Authorization draft는 AI agent를 LLM과 도구, 서비스, 리소스를 반복해서 호출하는 workload로 봐요. 여기에 WIMSE와 OAuth 2.0 계열, OpenID Shared Signals Framework를 적용하는 방향을 설명해요. 에이전트에는 안정적인 identifier와 credential을 주고, 사용자를 대신할 때는 delegation context도 보존해야 한다는 거죠.
 
 권한 모델은 “사용자가 승인했으니 worker가 아무 때나 쓴다”에서 “이 agent identity가 받은 특정 위임 범위에서 이번 행위를 수행한다”로 바뀌어야 해요. 그 위임은 사용자 또는 시스템에서 받은 것이어야 하잖아요.
 
@@ -32,9 +32,9 @@ IETF의 AI Agent Authentication and Authorization draft는 AI agent를 LLM과 �
 
 AI agent auth draft는 Agent Identity Management System, 줄여서 AIMS라는 개념 모델을 둬요. AIMS는 제품 이름이 아니에요.
 
-agent identifier와 agent credential, attestation, credential provisioning을 포함하고 authentication, authorization, observability and remediation도 들어가요. policy와 compliance까지 아우르며 에이전트 workload의 identity와 permission을 관리하죠.
+agent identifier와 agent credential, attestation, credential provisioning을 포함하고 authentication, authorization, observability and remediation도 들어가요. policy와 compliance까지 아우르며 에이전트 workload의 identity와 permission을 관리해요.
 
-내부 시스템 언어로 풀면 agent-registry는 agent identifier와 display metadata를 맡아요. agent-run에는 특정 실행의 actor, trigger, approval, evidence에 tool call audit까지 묶어 실행 단위로 기록하죠. model-router는 어떤 agent type이 어느 provider를 호출했는지 남기고, github와 slack, crawler는 resource server 또는 tool adapter 역할을 해요.
+내부 시스템 언어로 풀면 agent-registry는 agent identifier와 display metadata를 맡아요. agent-run에는 특정 실행의 actor, trigger, approval, evidence에 tool call audit까지 묶어 실행 단위로 기록해요. model-router는 어떤 agent type이 어느 provider를 호출했는지 남기고, github와 slack, crawler는 resource server 또는 tool adapter 역할을 해요.
 
 AIMS가 당장 별도 서버를 도입하라는 뜻은 아니에요. 도메인 모델에 “에이전트도 인증·인가 대상”이라는 축을 더하라는 요구에 가까워요.
 
@@ -48,7 +48,7 @@ OAuth Identity and Authorization Chaining draft는 여러 trust domain을 지나
 
 요청이 domain A의 authorization server에서 시작한다고 해볼게요. domain B의 protected resource에 도달해도 원래 사용자가 누구였는지, 어떤 authorization을 받았고 어느 중간 resource server를 거쳤는지를 알 수 있어야 해요.
 
-draft의 기본 흐름은 OAuth 2.0 Token Exchange(RFC 8693)에 JWT bearer assertion grant(RFC 7523)를 조합해요. 먼저 domain A에서 받은 토큰을 domain A의 authorization server에서 교환하죠.
+draft의 기본 흐름은 OAuth 2.0 Token Exchange(RFC 8693)에 JWT bearer assertion grant(RFC 7523)를 조합해요. 먼저 domain A에서 받은 토큰을 domain A의 authorization server에서 교환해요.
 
 그 결과 domain B authorization server를 대상으로 한 JWT authorization grant를 받고, 이를 domain B에 제시해 access token을 얻어요. access token 하나를 계속 릴레이하는 게 아니라, trust boundary를 넘을 때마다 맥락을 검증 가능한 grant로 다시 표현하는 방식이에요.
 
@@ -156,9 +156,9 @@ AgentRun에 actor와 delegation field를 남기는 것부터 시작해, tool cal
 
 Slack 기반 LLM 멀티 에이전트 시스템에서 먼저 바꿀 모듈은 다섯 곳이에요. agent-registry, agent-run, be-chain, slack, github예요.
 
-agent-registry는 agent/code-reviewer와 agent/cto, agent/be, agent/be-schema, agent/issue-labeler, agent/be-fix를 같은 봇으로 취급하면 안 되고 각각 다른 권한 경계로 관리해야 해요. PR에 코멘트를 남기는 agent와 schema 변경 제안을 만드는 agent도 구분해야 하죠. 둘을 같은 credential로 묶으면 안 되니까요.
+agent-registry는 agent/code-reviewer와 agent/cto, agent/be, agent/be-schema, agent/issue-labeler, agent/be-fix를 같은 봇으로 취급하면 안 되고 각각 다른 권한 경계로 관리해야 해요. PR에 코멘트를 남기는 agent와 schema 변경 제안을 만드는 agent도 구분해야 해요. 둘을 같은 credential로 묶으면 안 되니까요.
 
-agent-run은 실행 단위의 진실 원장이 되어야 해요. begin → run → finish 라이프사이클과 evidence record에 actorUserId, agentIdentity, delegatedScopes, approvalId, toolCallAuditId를 더해야 하죠.
+agent-run은 실행 단위의 진실 원장이 되어야 해요. begin → run → finish 라이프사이클과 evidence record에 actorUserId, agentIdentity, delegatedScopes, approvalId, toolCallAuditId를 더해야 해요.
 
 actorUserId는 Slack command 또는 natural language mention을 시작한 사람이고, agentIdentity는 판단하고 도구를 호출한 agent workload예요. delegatedScopes에는 이번 실행에서 허용된 범위를 담고, approvalId는 사람이 승인한 write action의 근거가 되죠. toolCallAuditId는 GitHub, Prisma, crawler, CLI provider의 세부 호출 기록과 연결돼요.
 
@@ -168,7 +168,7 @@ slack과 github는 trust boundary에 가까워요. Slack은 사용자 intent와 
 
 agent/code-reviewer, agent/issue-labeler, pr-review-loop, webhook에는 자동 트리거와 사용자 트리거가 섞여 들어올 수 있어요. webhook 자동 트리거에는 actorUserId가 없거나 system actor가 들어가는 반면, Slack command에는 명시적인 사용자 actor가 있죠. 이 차이를 모델에 남겨야 GitHub write 권한도 다르게 줄 수 있어요.
 
-scope vocabulary는 좁게 잡아야 해요. write:github처럼 넓은 범위로 두지 말고 github.pr.comment, github.issue.label처럼 실제 tool adapter가 검사할 단위로 나누고, crawler.job.create와 prisma.schema.propose도 별도 범위로 구분해야 하죠. 그래야 user → agent → tool의 각 호출에 이번 실행에 필요한 권한만 전달할 수 있어요.
+scope vocabulary는 좁게 잡아야 해요. write:github처럼 넓은 범위로 두지 말고 github.pr.comment, github.issue.label처럼 실제 tool adapter가 검사할 단위로 나누고, crawler.job.create와 prisma.schema.propose도 별도 범위로 구분해야 해요. 그래야 user → agent → tool의 각 호출에 이번 실행에 필요한 권한만 전달할 수 있어요.
 
 에이전트 권한 체인의 출발점은 복잡한 token service가 아니에요.
 

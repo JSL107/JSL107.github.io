@@ -27,7 +27,7 @@ type CodeModeOutput =
   | { status: "error"; executionId: string; error: string; logs?: string[] };
 ```
 
-핵심 차이는 제어 흐름이 어디에 놓이느냐예요. direct tool call에서는 모델이 tool → result → next tool을 반복하지만, Code Mode는 loop, branch, filter, transform 같은 중간 제어를 sandbox 안의 코드로 옮겨요. paused 상태가 생기면 host가 위험한 호출을 pending action으로 멈추므로, 승인·감사·재실행의 경계를 잡을 수 있죠.
+핵심 차이는 제어 흐름이 어디에 놓이느냐예요. direct tool call에서는 모델이 tool → result → next tool을 반복하지만, Code Mode는 loop, branch, filter, transform 같은 중간 제어를 sandbox 안의 코드로 옮겨요. paused 상태가 생기면 host가 위험한 호출을 pending action으로 멈추므로, 승인·감사·재실행의 경계를 잡을 수 있어요.
 
 ## 필요한 도구만 찾아서 실행한다
 
@@ -75,7 +75,7 @@ export default defineConfig({
 });
 ```
 
-Code Mode Vite plugin은 Worker entry module에서 CodemodeRuntime facet class를 export해요. plugin을 쓰지 않는다면 `export { CodemodeRuntime } from "@cloudflare/codemode";`를 직접 추가해야 하죠. 런타임 상태가 Durable Object facet에 저장되는 건 Workers runtime이 facet class를 ctx.exports에서 찾기 때문이죠.
+Code Mode Vite plugin은 Worker entry module에서 CodemodeRuntime facet class를 export해요. plugin을 쓰지 않는다면 `export { CodemodeRuntime } from "@cloudflare/codemode";`를 직접 추가해야 해요. 런타임 상태가 Durable Object facet에 저장되는 건 Workers runtime이 facet class를 ctx.exports에서 찾기 때문이죠.
 
 connector는 평범한 class예요. name()은 sandbox global 이름이 되고, instructions()는 모델에 사용법을 알려주며, tools()는 호출할 수 있는 method를 정의해요. 문서의 NotesConnector 예시에서는 createNote가 requiresApproval: true로 설정돼 있어 실행 전에 멈추고요.
 
@@ -85,9 +85,9 @@ revert 함수는 rollback compensation도 제공해요.
 
 Code Mode는 experimental이고, Cloudflare 문서도 breaking changes 가능성을 명시해요. 안정적으로 동작하는 NestJS, BullMQ, Prisma, Slack Bolt 기반 시스템의 본체를 교체하기보다, orchestration 일부를 검증하는 실험 계층으로 보는 편이 안전해요.
 
-호출 순서가 정해진 작업에는 direct tool call이 더 알맞아요. 단일 Slack 응답과 고정된 DB 조회, 버튼 승인 처리, 단순 파라미터 추출이 여기에 해당하죠. 반대로 루프·분기·필터링·결과 축약이 반복될 때는 Code Mode가 의미 있어요.
+호출 순서가 정해진 작업에는 direct tool call이 더 알맞아요. 단일 Slack 응답과 고정된 DB 조회, 버튼 승인 처리, 단순 파라미터 추출이 여기에 해당해요. 반대로 루프·분기·필터링·결과 축약이 반복될 때는 Code Mode가 의미 있어요.
 
-중간 결과가 크거나 도구 목록이 커서 progressive discovery의 이득이 있는 작업에도 잘 맞아요. 다만 sandbox가 Node.js API와 unrestricted network access를 막더라도 connector 설계는 애플리케이션의 책임이에요. 읽기 전용 method와 승인 대기 상태로 멈출 method는 직접 정해야 하죠.
+중간 결과가 크거나 도구 목록이 커서 progressive discovery의 이득이 있는 작업에도 잘 맞아요. 다만 sandbox가 Node.js API와 unrestricted network access를 막더라도 connector 설계는 애플리케이션의 책임이에요. 읽기 전용 method와 승인 대기 상태로 멈출 method는 직접 정해야 해요.
 
 rollback 가능 여부와 실행 로그에 민감정보가 남지 않는지도 확인해야 해요.
 
@@ -95,7 +95,7 @@ rollback 가능 여부와 실행 로그에 민감정보가 남지 않는지도 �
 
 첫 번째 후보는 agent/code-reviewer이고, 여기에는 github와 pr-review-loop도 포함돼요. PR detail, file list, diff, 기존 review thread, 체크 결과를 조합해도 모든 diff를 모델에 넣을 필요는 없어요. sandbox 안에서 파일 크기와 확장자로 분류한 뒤 리뷰 가치가 낮은 generated file을 제외하고, “검토해야 할 변경 묶음”만 반환할 수 있죠.
 
-두 번째 후보는 slack-collector와 slack-inbox예요. Slack thread context를 모을 때는 메시지 수와 작성자, 시간 범위, 첨부 링크에 따라 분기가 많아요. connector method로 메시지를 가져온 뒤 bot 메시지와 중복 인용, 오래된 context를 줄이는 거죠.
+두 번째 후보는 slack-collector와 slack-inbox예요. Slack thread context를 모을 때는 메시지 수와 작성자, 시간 범위, 첨부 링크에 따라 분기가 많아요. connector method로 메시지를 가져온 뒤 bot 메시지와 중복 인용, 오래된 context를 줄이는 거예요.
 
 최종 context pack만 반환하는 방식이 맞죠.
 
@@ -105,11 +105,11 @@ rollback 가능 여부와 실행 로그에 민감정보가 남지 않는지도 �
 
 ## 도입 전에 확인할 조건
 
-먼저 GitHub PR diff 수집처럼 side effect가 없는 읽기 전용 connector로 검증해야 해요. search, describe, connector method 호출과 최종 result shaping이 한 번에 동작하는지 확인하는 거죠. 비교 기준은 모델 라운드트립 횟수가 아니라, 중간 데이터가 모델 컨텍스트로 얼마나 덜 돌아오는지예요.
+먼저 GitHub PR diff 수집처럼 side effect가 없는 읽기 전용 connector로 검증해야 해요. search, describe, connector method 호출과 최종 result shaping이 한 번에 동작하는지 확인하는 거예요. 비교 기준은 모델 라운드트립 횟수가 아니라, 중간 데이터가 모델 컨텍스트로 얼마나 덜 돌아오는지예요.
 
 그다음 requiresApproval: true인 method가 실제로 paused 상태와 pending action으로 멈추는지, 같은 execution을 replay할 때 codemode.step()으로 기록한 작업이 기대대로 재사용되는지 확인해야 해요. 이 두 가지 검증이 끝나기 전에는 쓰기 작업이나 운영 자동화에 연결하면 안 돼요.
 
-Code Mode의 가치는 단순히 도구 호출을 줄이는 데 있지 않아요. 도구가 많고 중간 결과가 큰 작업에서 제어 흐름과 데이터 축약을 sandbox로 옮기고, 모델에는 판단에 필요한 결과만 전달하는 데 있죠.
+Code Mode의 가치는 단순히 도구 호출을 줄이는 데 있지 않아요. 도구가 많고 중간 결과가 큰 작업에서 제어 흐름과 데이터 축약을 sandbox로 옮기고, 모델에는 판단에 필요한 결과만 전달하는 데 있어요.
 
 고정된 작업까지 모두 바꾸기보다, 복잡한 orchestration 구간부터 읽기 전용으로 검증하는 게 적절하죠.
 
