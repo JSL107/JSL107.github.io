@@ -10,7 +10,7 @@ Slack에서 에이전트에게 “오늘 할 일 정리해 줘”라고 시키�
 
 “지난 PR 몇 개를 보고 이번 주 업무 로그를 만들고, 누락된 테스트 리스크를 따로 정리하고, 블로그 후보까지 뽑아 줘” 같은 요청은 한 번의 LLM 호출로 다루기 어려워요. GitHub 결과와 리뷰 메모가 길어지고 초안도 여러 번 바뀌니까요. 일부 단계가 실패해도 전체 작업을 재개할 수 있어야 해요.
 
-이때 병목은 “어떤 모델을 붙일까”가 아니에요. 라우터가 있고 에이전트 역할까지 나뉘었다면 이제 실행 구조를 고민해야 하죠. 긴 작업을 어떻게 쪼개고 중간 산출물을 어디에 둘지, 하위 작업을 실행할 컨텍스트와 위험한 도구 호출을 멈출 지점은 어디일지 정해야 해요. Deep Agents 패턴은 바로 이 지점에서 의미가 생겨요.
+이때 병목은 “어떤 모델을 붙일까”가 아니에요. 라우터가 있고 에이전트 역할까지 나뉘었다면 이제 실행 구조를 고민해야 해요. 긴 작업을 어떻게 쪼개고 중간 산출물을 어디에 둘지, 하위 작업을 실행할 컨텍스트와 위험한 도구 호출을 멈출 지점은 어디일지 정해야 해요. Deep Agents 패턴은 바로 이 지점에서 의미가 생겨요.
 
 ## Deep Agents는 더 똑똑한 루프가 아니라 실행 하네스다
 
@@ -37,7 +37,7 @@ const result = await agent.invoke({
 
 ## 계획, 파일, 서브에이전트가 맞물리는 방식
 
-첫 번째 장치는 planning이에요. JavaScript reference의 “What’s Included”에는 planning 도구로 write_todos가 명시돼 있어요. 사람이 보기 좋은 체크리스트라기보다, 장기 작업의 현재 상태를 모델이 계속 갱신하도록 돕는 작업 상태죠. 긴 작업에서는 끝낸 일과 남은 일, 다음 행동이 쉽게 흐려지는데 todo 상태가 이런 흐림을 줄여줘요.
+첫 번째 장치는 planning이에요. JavaScript reference의 “What’s Included”에는 planning 도구로 write_todos가 명시돼 있어요. 사람이 보기 좋은 체크리스트라기보다, 장기 작업의 현재 상태를 모델이 계속 갱신하도록 돕는 작업 상태예요. 긴 작업에서는 끝낸 일과 남은 일, 다음 행동이 쉽게 흐려지는데 todo 상태가 이런 흐림을 줄여줘요.
 
 두 번째 장치는 virtual filesystem이에요. 문서에 따르면 Deep Agents에는 ls, read_file, write_file, edit_file이 들어 있고 glob과 grep도 기본 파일 도구예요. read_file은 offset/limit로 큰 파일의 일부만 읽고, glob은 **/*.py 같은 패턴을 찾으며, sandbox backend가 있으면 execute도 사용할 수 있어요.
 
@@ -45,7 +45,7 @@ LangChain 블로그는 0.2에서 filesystem backend가 더 중요해졌다고 �
 
 filesystem은 단순한 첨부 저장소가 아니에요. 조사 원문과 diff 분석 로그, 초안, 검증 결과, 실패한 도구 호출의 흔적을 파일로 내리면 메인 대화 컨텍스트가 덜 오염되거든요. LangChain 블로그가 언급한 large tool result eviction도 같은 방향이라, 큰 도구 결과가 토큰 임계값을 넘으면 파일시스템에 덤프하고 오래된 대화 이력은 summarization으로 압축해요.
 
-세 번째 장치는 subagent예요. Deep Agents의 subagents 문서는 subagent가 “context quarantine”에 유용하다고 설명해요. 하위 에이전트는 독립된 컨텍스트 창에서 작업해 메인 에이전트의 컨텍스트를 더럽히지 않고, 작업을 마치면 결과만 돌려주죠.
+세 번째 장치는 subagent예요. Deep Agents의 subagents 문서는 subagent가 “context quarantine”에 유용하다고 설명해요. 하위 에이전트는 독립된 컨텍스트 창에서 작업해 메인 에이전트의 컨텍스트를 더럽히지 않고, 작업을 마치면 결과만 돌려줘요.
 
 전문 역할을 붙일 수도 있지만, 더 본질적인 가치는 격리와 압축이에요.
 
@@ -62,7 +62,7 @@ const agent = createDeepAgent({
 
 ## 사람이 끼어야 하는 지점도 하네스의 일부다
 
-장기 작업에서 위험한 순간은 모델이 “그럴듯한 다음 행동”을 너무 자연스럽게 고를 때예요. 파일 삭제나 알림 발송, 외부 시스템 변경 같은 도구 호출에는 자동 실행보다 승인 지점이 필요하죠. Deep Agents의 human-in-the-loop 문서는 interruptOn으로 특정 도구를 호출하기 전에 멈추는 방식을 설명해요. 이때는 checkpointer가 필요한데, 멈춘 실행 상태를 저장했다가 사람이 승인·수정·거절한 뒤 같은 config로 재개해야 하거든요.
+장기 작업에서 위험한 순간은 모델이 “그럴듯한 다음 행동”을 너무 자연스럽게 고를 때예요. 파일 삭제나 알림 발송, 외부 시스템 변경 같은 도구 호출에는 자동 실행보다 승인 지점이 필요해요. Deep Agents의 human-in-the-loop 문서는 interruptOn으로 특정 도구를 호출하기 전에 멈추는 방식을 설명해요. 이때는 checkpointer가 필요한데, 멈춘 실행 상태를 저장했다가 사람이 승인·수정·거절한 뒤 같은 config로 재개해야 하거든요.
 
 공식 예시에서는 remove_file, fetch_file, notify_email마다 다른 interrupt 정책을 둬요. remove_file은 기본 승인 흐름을 켜고, fetch_file은 꺼요.
 
@@ -110,7 +110,7 @@ agent/pm은 planning과 궁합이 좋아요. daily plan은 결과물처럼 보�
 
 agent/cto는 subagent orchestration과 맞닿아 있어요. PM 작업을 BE worker로 분배한다면 모든 하위 작업의 원문을 한 컨텍스트에 넣지 말고, worker 실행은 child run으로 격리해 압축된 결과만 회수하는 편이 나아요. agent/be, agent/be-test, agent/be-schema, agent/code-reviewer는 독립 subagent 후보지만 늘 병렬화해야 하는 건 아니에요. schema 변경 제안과 Jest spec 생성은 같은 diff를 보더라도 산출물이 달라 분리할 가치가 있는 반면, 작은 수정 하나에 모든 worker를 켜면 토큰만 낭비하거든요.
 
-agent/blog와 agent/work-reviewer, autopilot과 ops-supervisor는 filesystem 기반 artifact store의 효과를 크게 볼 수 있어요. 초안과 회고 메모, 후보 목록, 검증 로그처럼 중간 산출물이 많은 작업이기 때문이죠. Slack 응답에는 최종 요약과 링크만 남기고, 긴 조사 메모와 초안 이력은 파일이나 저장소에 내려두는 편이 더 안정적이에요.
+agent/blog와 agent/work-reviewer, autopilot과 ops-supervisor는 filesystem 기반 artifact store의 효과를 크게 볼 수 있어요. 초안과 회고 메모, 후보 목록, 검증 로그처럼 중간 산출물이 많은 작업이기 때문이에요. Slack 응답에는 최종 요약과 링크만 남기고, 긴 조사 메모와 초안 이력은 파일이나 저장소에 내려두는 편이 더 안정적이에요.
 
 sandbox와 agent/be-sandbox는 execute와 human approval의 경계에 닿아 있어요. 테스트 실행과 코드 생성, 파일 수정 제안은 자동화할 가치가 크지만 side effect도 있어요. preview 단계와 apply 단계를 나누고, 쓰기·삭제·외부 알림 도구는 interrupt 지점으로 취급하는 편이 안전해요.
 

@@ -132,7 +132,7 @@ def main():
             m = metrics(path)
             name = path.split('/')[-1].replace('.md', '')[:44]
             flag = '' if 11.0 <= m['words'] <= 13.0 else ('  어절높음' if m['words'] > 13.0 else '  어절낮음')
-            if m['top_share'] > 0.08 or m['streak'] > 0:
+            if m['top_share'] > 0.12 or m['streak'] > 0:
                 flag += '  어미편중'
             top = f"{m['top_name']} {m['top_share'] * 100:.0f}%"
             print(f"{name[:38]:<40}{m['n']:>5}{m['words']:>7.1f}{m['clause']:>6.2f}"
