@@ -5,7 +5,7 @@ pubDatetime: 2026-08-28T19:07:00+09:00
 category: backend
 ---
 
-배포 전 테스트를 모두 통과했는데도 운영에서 어딘가 이상하다고 느끼는 순간이 있어요. `/review-pr` 명령은 여전히 “리뷰 결과”를 돌려주지만, GitHub PR detail만 읽고 diff는 보지 않았을 수 있거든요. 근거가 이미 충분한데 모델을 한 번 더 호출하거나, 실패하면 graceful fallback으로 가야 할 경로가 예외로 끝날 수도 있고요.
+배포 전 테스트를 모두 통과했는데도 운영에서 어딘가 이상하다고 느끼는 순간이 있어요. `/review-pr` 명령은 여전히 “리뷰 결과”를 돌려주지만, GitHub PR detail만 읽고 diff는 보지 않았을 수 있거든요. 근거가 이미 충분한데 모델을 한 번 더 호출하거나, 실패하면 graceful fallback으로 가야 할 경로가 예외로 끝날 수도 있어요.
 
 기존 API 테스트로는 이런 변화를 좀처럼 잡아내기 어려워요. 컨트롤러가 200을 반환했는지, DTO 모양이 맞는지, 최종 문자열에 특정 문구가 들어 있는지는 검사할 수 있죠. 하지만 에이전트 시스템에서는 도구 선택과 호출 순서도 품질의 일부고, 실패했을 때 다른 경로로 빠졌는지 근거를 남겼는지도 살펴야 하니까요.
 
@@ -13,7 +13,7 @@ category: backend
 
 ## 최종 응답 테스트로는 보이지 않는 회귀
 
-LLM 애플리케이션을 처음 만들 때는 대개 출력부터 평가해요. 질문을 넣고 답변이 맞는지 확인하는 식이죠. OpenEvals README도 eval을 전통적인 소프트웨어 테스트와 비슷하다고 설명하며, LLM 애플리케이션을 production으로 가져가기 위한 출발점이라고 말해요. OpenAI Evals 문서도 모델 업그레이드와 프롬프트 변경, 모델 비교, prompt regression 방지에 eval이 필요하다고 설명하고요.
+LLM 애플리케이션을 처음 만들 때는 대개 출력부터 평가해요. 질문을 넣고 답변이 맞는지 확인하는 식이죠. OpenEvals README도 eval을 전통적인 소프트웨어 테스트와 비슷하다고 설명하며, LLM 애플리케이션을 production으로 가져가기 위한 출발점이라고 말해요. OpenAI Evals 문서도 모델 업그레이드와 프롬프트 변경, 모델 비교, prompt regression 방지에 eval이 필요하다고 설명하죠.
 
 이 관점은 지금도 중요해요. 단순 분류나 요약, 포맷 변환처럼 “입력 → 출력” 구조가 분명한 작업은 최종 출력만 평가해도 많은 문제를 잡을 수 있거든요. OpenAI 문서의 IT ticket categorization 예시는 ticket text를 Hardware, Software, Other 중 하나로 분류하고, string_check grader로 정답 라벨과 정확히 같은지 비교해요.
 
@@ -120,9 +120,9 @@ AgentEvals와 OpenEvals는 trajectory match mode로 strict, unordered, subset, s
 
 ## LLM judge는 유용하지만 게이트 전체가 되면 위험하다
 
-LLM-as-judge 방식은 사람이 정답 경로를 촘촘히 작성하기 어려울 때 유용해요. OpenEvals README는 `createLLMAsJudge`를 일반적인 시작점으로 소개하며, prompt와 model을 받아 evaluator function을 만든다고 설명해요. AgentEvals도 trajectory 전용 judge prompt인 `TRAJECTORY_ACCURACY_PROMPT`를 제공하고요.
+LLM-as-judge 방식은 사람이 정답 경로를 촘촘히 작성하기 어려울 때 유용해요. OpenEvals README는 `createLLMAsJudge`를 일반적인 시작점으로 소개하며, prompt와 model을 받아 evaluator function을 만든다고 설명해요. AgentEvals도 trajectory 전용 judge prompt인 `TRAJECTORY_ACCURACY_PROMPT`를 제공해요.
 
-이 방식은 경로의 “품질”까지 볼 수 있다는 장점이 있어요. strict match는 도구 순서가 달라지면 실패하지만, 순서가 달라도 괜찮은 경우가 있어요. 도구 이름은 맞아도 목적과 무관한 호출이 끼어들 수도 있고요. judge는 “이 경로가 요청 해결에 합리적인가”, “불필요한 우회가 있는가” 같은 질문을 다룰 수 있어요.
+이 방식은 경로의 “품질”까지 볼 수 있다는 장점이 있어요. strict match는 도구 순서가 달라지면 실패하지만, 순서가 달라도 괜찮은 경우가 있어요. 도구 이름은 맞아도 목적과 무관한 호출이 끼어들 수도 있죠. judge는 “이 경로가 요청 해결에 합리적인가”, “불필요한 우회가 있는가” 같은 질문을 다룰 수 있어요.
 
 CI gate의 첫 줄부터 LLM judge로 세우는 일은 조심해야 해요. judge도 모델 호출이라 비용과 지연이 생기고, 판정이 완전히 결정적이지 않으니까요. LangSmith 문서는 offline evaluation과 online evaluation을 구분해요. 개발 중에는 curated dataset으로 version을 비교해 regression을 찾고, 운영 중에는 live traffic을 sampling, filter, reference-free judge, format validation 같은 방식으로 모니터링하죠.
 
@@ -162,4 +162,4 @@ trajectory eval이 만능은 아니에요. agent workflow가 자주 바뀌는 �
 
 각 Slack 명령의 “필수 trajectory step”도 정해야 해요. `/review-pr`, `/today`, `/worklog`마다 정상 경로 1개와 실패 경로 1개를 골라요. 정상 경로에서는 superset match로 필수 tool call을 보장하고, 실패 경로에서는 fallback evidence와 Slack 응답을 검사하죠. 그다음 LLM judge를 붙여 “경로가 과하게 돌아가지 않았는가”를 평가하면 돼요.
 
-에이전트 품질은 최종 답변뿐 아니라 실행 경로에도 담겨 있어요. 시작점은 거창한 평가 플랫폼이 아니라, 운영 trace를 fixture로 바꿔 tool call 순서와 필수 근거 조회를 검사하는 거예요. fallback과 불필요한 호출도 TypeScript evaluator와 CI에서 확인하면 되고요.
+에이전트 품질은 최종 답변뿐 아니라 실행 경로에도 담겨 있어요. 시작점은 거창한 평가 플랫폼이 아니라, 운영 trace를 fixture로 바꿔 tool call 순서와 필수 근거 조회를 검사하는 거예요. fallback과 불필요한 호출도 TypeScript evaluator와 CI에서 확인하면 돼요.

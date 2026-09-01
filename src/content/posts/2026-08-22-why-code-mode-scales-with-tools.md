@@ -75,7 +75,7 @@ export default defineConfig({
 });
 ```
 
-Code Mode Vite plugin은 Worker entry module에서 CodemodeRuntime facet class를 export해요. plugin을 쓰지 않는다면 `export { CodemodeRuntime } from "@cloudflare/codemode";`를 직접 추가해야 하고요. 런타임 상태가 Durable Object facet에 저장되는 건 Workers runtime이 facet class를 ctx.exports에서 찾기 때문이죠.
+Code Mode Vite plugin은 Worker entry module에서 CodemodeRuntime facet class를 export해요. plugin을 쓰지 않는다면 `export { CodemodeRuntime } from "@cloudflare/codemode";`를 직접 추가해야 하죠. 런타임 상태가 Durable Object facet에 저장되는 건 Workers runtime이 facet class를 ctx.exports에서 찾기 때문이죠.
 
 connector는 평범한 class예요. name()은 sandbox global 이름이 되고, instructions()는 모델에 사용법을 알려주며, tools()는 호출할 수 있는 method를 정의해요. 문서의 NotesConnector 예시에서는 createNote가 requiresApproval: true로 설정돼 있어 실행 전에 멈추고요.
 

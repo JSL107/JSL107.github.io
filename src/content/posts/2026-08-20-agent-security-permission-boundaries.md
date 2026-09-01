@@ -20,17 +20,17 @@ Simon Willison은 이 세 조건이 한 실행 안에서 만날 때 생기는 �
 
 하나씩 떼어 놓고 보면 흔한 기능이에요. PR 리뷰 봇은 비공개 저장소의 diff를 읽어야 쓸모가 있고, 크롤러는 신뢰할 수 없는 웹페이지를 읽어야 하며, Slack 봇은 결과를 다시 대화방에 보내야 하니까요. 문제는 셋이 만날 때 생겨요.
 
-공격자가 GitHub issue 본문이나 웹페이지에 지시문을 심어 두고 에이전트가 그걸 모델 입력에 넣는데, 같은 실행에서 비공개 diff나 Slack 맥락을 읽어 외부 채널로 보낼 수 있다면, 모델의 판단 실수가 그대로 권한 오남용이 돼요.
+공격자가 GitHub issue 본문이나 웹페이지에 지시문을 심어 두면 에이전트가 그걸 모델 입력에 넣게 돼요. 그 에이전트가 같은 실행에서 비공개 diff나 Slack 맥락을 읽어 외부 채널로 보낼 수 있다면, 모델의 판단 실수가 그대로 권한 오남용이 되죠.
 
-OWASP LLM Top 10 2026이 Prompt Injection, Sensitive Information Disclosure, Excessive Agency를 상위 위험으로 둔 것도 이 흐름과 맞닿아 있어요. Prompt Injection은 입력이 모델 동작을 의도와 다르게 바꾸는 문제예요. Sensitive Information Disclosure는 민감 정보가 모델 응답과 로그, 도구 출력, 연결된 시스템을 통해 드러나는 문제고요. Excessive Agency는 목표 달성에 필요한 수준보다 넓은 권한과 도구를 에이전트에게 줬을 때 생기고요.
+OWASP LLM Top 10 2026이 Prompt Injection, Sensitive Information Disclosure, Excessive Agency를 상위 위험으로 둔 것도 이 흐름과 맞닿아 있어요. Prompt Injection은 입력이 모델 동작을 의도와 다르게 바꾸는 문제예요. Sensitive Information Disclosure는 민감 정보가 모델 응답과 로그, 도구 출력, 연결된 시스템을 통해 드러나는 문제죠. Excessive Agency는 목표 달성에 필요한 수준보다 넓은 권한과 도구를 에이전트에게 줬을 때 생겨요.
 
 세 항목은 도구를 가진 LLM 애플리케이션에서 서로 증폭돼요.
 
 ## 행동하는 시스템의 보안 경계
 
-예전 챗봇 보안은 출력이 중심이라, 부적절한 답변이나 금지된 정보, 시스템 프롬프트 누설 같은 모델 출력에 주로 관심을 뒀어요. 에이전트는 달라요. Google의 Secure AI Agents 문서는 에이전트를 환경을 인식하고 결정을 내리며 사용자의 목표를 이루려고 자율적으로 행동하는 AI 시스템으로 설명하거든요.
+예전 챗봇 보안은 부적절한 답변이나 금지된 정보, 시스템 프롬프트 누설처럼 모델이 내놓는 출력에 주로 관심을 뒀어요. 에이전트는 달라요. Google의 Secure AI Agents 문서는 에이전트를 환경을 인식하고 결정을 내리며 사용자의 목표를 이루려고 자율적으로 행동하는 AI 시스템으로 설명해요.
 
-차이는 “act”에 있어요. 행동하는 시스템의 보안 경계를 프롬프트 안에만 둘 수는 없으니, “비밀을 말하지 마”라는 system prompt도 필요하지만 그것만으로는 부족해요. 외부 문서와 사용자 지시, 시스템 지시가 하나의 토큰 흐름에 섞이면 현재 LLM이 출처별 신뢰도를 완벽히 판별한다고 보장하기 어려워요. OWASP 문서도 생성형 AI의 구조적 특성상 prompt injection을 완전히 예방하는 메커니즘은 없다는 취지로 설명하고요.
+차이는 “act”에 있어요. 행동하는 시스템의 보안 경계를 프롬프트 안에만 둘 수는 없으니, “비밀을 말하지 마”라는 system prompt도 필요하지만 그것만으로는 부족해요. 외부 문서와 사용자 지시, 시스템 지시가 하나의 토큰 흐름에 섞이면 현재 LLM이 출처별 신뢰도를 완벽히 판별한다고 보장하기 어려워요. OWASP 문서도 생성형 AI의 구조적 특성상 prompt injection을 완전히 예방하는 메커니즘은 없다는 취지로 설명해요.
 
 agentic AI threat modeling은 “모델이 어느 순간 잘못된 지시를 따를 수 있다”는 전제에서 시작해야 해요. 모델이 접근할 데이터와 호출할 도구, 호출 결과를 보낼 위치부터 확인하고 사용자가 어떤 행동을 미리 볼 수 있는지도 살펴야 하죠. 사후에는 누가 어떤 근거로 무엇을 했는지 재구성할 수 있어야 하잖아요.
 
@@ -56,7 +56,7 @@ agentic AI threat modeling은 “모델이 어느 순간 잘못된 지시를 따
 
 human-in-the-loop를 “전부 물어보기”로 설계하면 안 돼요.
 
-핵심은 risk tier예요. 읽기와 쓰기를 나눠서, 비공개 PR diff를 읽고 요약 초안을 만드는 일은 자동화할 수 있어요. 다만 그 초안을 외부 채널이나 GitHub comment에 게시하는 행동은 더 높은 tier에 두는 거죠. CLI로 파일을 수정하거나 DB 상태를 바꾸는 행동도 마찬가지예요. 승인 화면에는 읽은 private data와 포함된 untrusted content를 표시해야 해요. 실행할 external communication과 변경될 리소스도 보여줘야 무엇이 위험한지 알 수 있잖아요.
+핵심은 risk tier예요. 읽기와 쓰기를 나누면, 비공개 PR diff를 읽고 요약 초안을 만드는 일은 자동화할 수 있어요. 다만 그 초안을 외부 채널이나 GitHub comment에 게시하는 행동은 더 높은 tier에 두는 거죠. CLI로 파일을 수정하거나 DB 상태를 바꾸는 행동도 마찬가지예요. 승인 화면에는 읽은 private data와 포함된 untrusted content를 표시해야 해요. 실행할 external communication과 변경될 리소스도 보여줘야 무엇이 위험한지 알 수 있잖아요.
 
 모든 입력과 출력을 audit log에 통째로 남기면 사고 분석은 쉬워지지만 로그 자체가 민감 정보 저장소가 돼요. 그래서 원문은 덜 남기는 편이 나아요. evidence record에는 원문 전체 대신 해시와 요약, 참조 ID, redaction된 파라미터, 정책 결정 결과를 조합하는 방식이 더 적절할 수 있죠.
 
@@ -64,19 +64,19 @@ human-in-the-loop를 “전부 물어보기”로 설계하면 안 돼요.
 
 ## Slack 기반 멀티 에이전트 시스템에 적용하기
 
-Slack 기반 멀티 에이전트 시스템에서는 권한 경계가 여러 모듈에 걸쳐 있어요. agent-run은 각 실행의 입력과 선택된 agent, 호출한 tool, evidence record, 실패와 재시도 이력을 잇는 audit spine이 되더라고요. router는 자연어 멘션을 어떤 dispatcher로 보낼지 정하는 권한 경계의 입구라, intent뿐 아니라 허용할 도구와 risk tier까지 함께 결정해야 하고요.
+Slack 기반 멀티 에이전트 시스템에서는 권한 경계가 여러 모듈에 걸쳐 있어요. agent-run은 각 실행의 입력과 선택된 agent, 호출한 tool, evidence record, 실패와 재시도 이력을 잇는 audit spine이 되더라고요. router는 자연어 멘션을 어떤 dispatcher로 보낼지 정하는 권한 경계의 입구라, intent뿐 아니라 허용할 도구와 risk tier까지 함께 결정해야 해요.
 
 agent/code-reviewer는 대표적인 trifecta 후보예요. GitHub PR diff는 private data일 수 있고 PR description이나 comment는 untrusted content일 수 있어요. 그리고 Slack 응답이나 GitHub review comment가 곧 external communication이죠. agent/work-reviewer도 Slack 대화와 GitHub assigned task를 근거로 업무 로그 초안을 만들어 결과를 Slack에 보내니 구조는 비슷하죠.
 
 agent/be-fix, agent/issue-labeler, docs-audit처럼 webhook이나 내부 자동 트리거로 움직이는 에이전트는 사용자가 그 순간 직접 보고 있지 않을 수 있어요. 그래서 human controller와 action log가 더 중요하죠. autopilot은 사용자의 즉시 지시 없이 움직이므로 기본 권한을 더 좁게 잡고, 외부 송신도 후보 생성까지만 허용하는 편이 안전하고요.
 
-preview-gate는 external-send나 state-changing action 전에 dry-run 결과를 보여주는 승인 surface이자 승인 지점이 될 수 있어요. sandbox는 CLI provider나 코드 생성 계열 에이전트의 파일 시스템과 프로세스 권한을 제한하는 실행 경계고요. slack formatter는 위험 tier가 올라간 행동을 사용자가 이해하도록 보여주는 UI 계층이고요. crawler는 모든 웹페이지를 untrusted content로 표시해야 하고, github 모듈은 read scope와 write scope를 분리해야 하잖아요.
+preview-gate는 external-send나 state-changing action 전에 dry-run 결과를 보여주는 승인 surface이자 승인 지점이 될 수 있어요. sandbox는 CLI provider나 코드 생성 계열 에이전트의 파일 시스템과 프로세스 권한을 제한하는 실행 경계예요. slack formatter는 위험 tier가 올라간 행동을 사용자가 이해하도록 보여주는 UI 계층이죠. crawler는 모든 웹페이지를 untrusted content로 표시해야 하고, github 모듈은 read scope와 write scope를 분리해야 하잖아요.
 
-에이전트 하나의 trifecta 표부터 채우면 돼요. /review-pr을 기준으로 보면 private data 칸에는 PR diff와 repository metadata를 적게 되죠. untrusted content 칸에는 PR 본문과 comment, diff 안의 문자열이, external communication 칸에는 Slack 응답과 GitHub review comment 가능성이 들어가고요.
+에이전트 하나의 trifecta 표부터 채우면 돼요. /review-pr을 기준으로 보면 private data 칸에는 PR diff와 repository metadata를 적게 되죠. untrusted content 칸에는 PR 본문과 comment, diff 안의 문자열이, external communication 칸에는 Slack 응답과 GitHub review comment 가능성이 들어가죠.
 
 세 칸이 모두 채워지면 최소 하나의 runtime policy나 승인 checkpoint가 필요해요.
 
-action metadata는 코드 계약으로 고정해야 해요. 도구 이름만으로는 부족해요. read-only인지 state-changing인지 외부 송신인지, 민감 정보를 다루는지, dry-run을 지원하는지까지 표시해야 하고요. 이 정보가 있어야 preview-gate, sandbox, agent-run audit가 같은 언어로 연결되더라고요.
+action metadata는 코드 계약으로 고정해야 해요. 도구 이름만으로는 부족해요. read-only인지 state-changing인지 외부 송신인지, 민감 정보를 다루는지, dry-run을 지원하는지까지 표시해야 해요. 이 정보가 있어야 preview-gate, sandbox, agent-run audit가 같은 언어로 연결되더라고요.
 
 에이전트 보안은 거대한 보안 제품 하나를 붙이는 일이 아니에요. 모델이 잘못 판단할 수 있다는 전제에서 출발해, 실행 경로마다 “무엇을 읽고, 무엇을 믿지 않으며, 어디로 보낼 수 있는가”를 제한하고 기록하는 설계 습관에 가깝죠.
 

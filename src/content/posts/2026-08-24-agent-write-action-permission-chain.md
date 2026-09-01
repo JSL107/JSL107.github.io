@@ -24,7 +24,7 @@ Slack 기반 에이전트가 read-only 도구를 넘어 외부 시스템까지 �
 
 단순 bearer token만 넘기면 downstream 서비스는 요청의 성격을 판단하기 어려워요. agent/code-reviewer가 사용자 A의 PR 리뷰 요청 범위에서 만든 GitHub comment인지 알 수 없거든요. 로그에 bot 또는 backend만 남으면 나중에 권한을 줄이기도, 거절 사유를 설명하기도 힘들어져요.
 
-IETF의 AI Agent Authentication and Authorization draft는 AI agent를 LLM과 도구, 서비스, 리소스를 반복해서 호출하는 workload로 봐요. 여기에 WIMSE와 OAuth 2.0 계열, OpenID Shared Signals Framework를 적용하는 방향을 설명하고요. 에이전트에는 안정적인 identifier와 credential을 주고, 사용자를 대신할 때는 delegation context도 보존해야 한다는 거죠.
+IETF의 AI Agent Authentication and Authorization draft는 AI agent를 LLM과 도구, 서비스, 리소스를 반복해서 호출하는 workload로 봐요. 여기에 WIMSE와 OAuth 2.0 계열, OpenID Shared Signals Framework를 적용하는 방향을 설명하죠. 에이전트에는 안정적인 identifier와 credential을 주고, 사용자를 대신할 때는 delegation context도 보존해야 한다는 거죠.
 
 권한 모델은 “사용자가 승인했으니 worker가 아무 때나 쓴다”에서 “이 agent identity가 받은 특정 위임 범위에서 이번 행위를 수행한다”로 바뀌어야 해요. 그 위임은 사용자 또는 시스템에서 받은 것이어야 하잖아요.
 
