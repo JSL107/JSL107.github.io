@@ -71,7 +71,9 @@ const step1 = createStep({
 })
 ```
 
-Slack command 입력, GitHub task 목록, PR diff 요약, worklog 산출물은 LLM에 통째로 던질 문자열이 아니에요. 검증 가능한 작은 데이터로 나누고, /worklog 전체를 하나의 agent 호출로 두는 대신 근거 수집 step과 초안 생성 step으로 쪼갤 수 있어요. 정량 근거 포함 여부는 scorer가 판단해요. Mastra는 이런 분해를 라이브러리 밖의 운영 관습이 아니라 framework의 기본 표현으로 만들잖아요.
+Slack command 입력, GitHub task 목록, PR diff 요약, worklog 산출물은 LLM에 통째로 던질 문자열이 아니에요. 검증 가능한 작은 데이터로 나누고, /worklog 전체를 하나의 agent 호출로 두는 대신 근거 수집 step과 초안 생성 step으로 쪼갤 수 있어요.
+
+정량 근거 포함 여부는 scorer가 판단해요. Mastra는 이런 분해를 라이브러리 밖의 운영 관습이 아니라 framework의 기본 표현으로 만들잖아요.
 
 ## memory와 eval은 운영 중인 품질을 다룬다
 
@@ -86,7 +88,9 @@ const response = await memoryAgent.generate('Remember my favorite color is blue.
 })
 ```
 
-Observational Memory는 긴 대화의 오래된 메시지를 dense observations로 압축해 context는 작게 유지하면서 장기 기억은 그대로 보존해요. Slack 멀티턴 업무봇에 매일의 plan과 누적 선호, 이전 리뷰 스타일, 반복되는 보고서 수정 요청을 모두 raw log로 넣으면 비용과 노이즈가 커져요. 반대로 너무 많이 버리면 지난 요청을 잊게 돼요. Mastra의 memory 모델은 이 문제를 thread, resource, storage 단위로 다시 보게 해요.
+Observational Memory는 긴 대화의 오래된 메시지를 dense observations로 압축해 context는 작게 유지하면서 장기 기억은 그대로 보존해요.
+
+Slack 멀티턴 업무봇에 매일의 plan과 누적 선호, 이전 리뷰 스타일, 반복되는 보고서 수정 요청을 모두 raw log로 넣으면 비용과 노이즈가 커져요. 반대로 너무 많이 버리면 지난 요청을 잊게 돼요. Mastra의 memory 모델은 이 문제를 thread, resource, storage 단위로 다시 보게 해요.
 
 Evals는 별도 배치 테스트만 뜻하지 않아요. scorer를 agent나 workflow step에 붙여 live evaluation을 수행할 수 있어요. scorer는 model-graded, rule-based, statistical 방식으로 구성하며 보통 0에서 1 사이의 score를 반환해요. step-level scorer는 해당 step의 input과 output을 받아 중간 단계의 품질을 평가해요.
 
@@ -114,7 +118,9 @@ const contentStep = createStep({
 
 ## observability에서는 span 경계를 먼저 봐야 한다
 
-Mastra의 observability는 tracing, logging, metrics, feedback, storage를 한 흐름으로 묶어요. tracing은 agent run, workflow execution, tool call, model interaction을 span으로 기록해요. 실행은 span으로 남고, metrics는 span이 끝날 때 duration, token count, estimated cost를 추출해요. log는 traced context 안에서 trace/span ID와 연결되며, feedback도 trace나 span에 붙일 수 있어요.
+Mastra의 observability는 tracing, logging, metrics, feedback, storage를 한 흐름으로 묶어요. tracing은 agent run, workflow execution, tool call, model interaction을 span으로 기록해요.
+
+실행은 span으로 남고, metrics는 span이 끝날 때 duration, token count, estimated cost를 추출해요. log는 traced context 안에서 trace/span ID와 연결되며, feedback도 trace나 span에 붙일 수 있어요.
 
 ```typescript
 import { Mastra } from '@mastra/core/mastra'
@@ -166,7 +172,9 @@ agent-run, queue, trace, eval 저장소를 이미 갖췄다면 중복을 피해�
 
 ## 기존 시스템에서는 workflow 후보가 먼저 보인다
 
-/today를 담당하는 agent/pm은 사용자의 오늘 입력과 GitHub assigned tasks, 전일 plan을 합쳐 daily plan을 만들어요. 완전히 open-ended하지 않으므로 전체를 agent로 처리하기보다 workflow로 감싸고 일부 판단만 agent에 맡기는 편이 맞아요. task 수집 step과 전일 plan 요약 step 다음에 daily plan 생성 agent step을 두고, 마지막에 결과 검증 scorer를 붙여요.
+/today를 담당하는 agent/pm은 사용자의 오늘 입력과 GitHub assigned tasks, 전일 plan을 합쳐 daily plan을 만들어요.
+
+완전히 open-ended하지 않으므로 전체를 agent로 처리하기보다 workflow로 감싸고 일부 판단만 agent에 맡기는 편이 맞아요. task 수집 step과 전일 plan 요약 step 다음에 daily plan 생성 agent step을 두고, 마지막에 결과 검증 scorer를 붙여요.
 
 agent/work-reviewer의 업무 로그 생성은 자연어 품질이 중요하며, 정량 근거 포함 여부는 별도 scorer로 떼어내기 좋아요. agent/code-reviewer에서는 diff 입력, 리뷰 후보, 근거 매핑, scorer 결과를 모두 다루고 같은 trace에 남겨요. 이 기록을 바탕으로 PR diff와 관계없는 리뷰를 판별할 수 있어요.
 
@@ -176,10 +184,16 @@ agent/vacation은 자연어 파라미터 추출에만 LLM을 쓰고 실제 계�
 
 ## 전면 교체보다 작은 비교가 먼저다
 
-Mastra는 Node.js-compatible environment에 배포할 수 있어요. standalone Mastra server로 띄우거나 기존 web framework와 통합할 수 있어요. runtime으로 Node.js v22.13.0 이상, Bun, Deno, Cloudflare를 제시하며 standalone server는 Hono를 기반으로 해요. production에서는 workflow orchestration, cron scheduling, background tool execution을 API server와 분리한 dedicated worker process에서 실행할 수 있어요.
+Mastra는 Node.js-compatible environment에 배포할 수 있어요. standalone Mastra server로 띄우거나 기존 web framework와 통합할 수 있어요. runtime으로 Node.js v22.13.0 이상, Bun, Deno, Cloudflare를 제시하며 standalone server는 Hono를 기반으로 해요.
 
-Slack Socket Mode, BullMQ, Prisma, 기존 router, retry 정책, CLI provider 격리, trace 저장소가 이미 있다면 Mastra의 primitive와 겹칠 수 있어요. model router는 provider/model 문자열과 OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY 같은 환경변수를 사용해요. 구독형 CLI를 별도 child process로 격리한 시스템에는 바로 맞지 않을 수 있어요.
+production에서는 workflow orchestration, cron scheduling, background tool execution을 API server와 분리한 dedicated worker process에서 실행할 수 있어요.
 
-Mastra의 가치는 새 framework로 전면 교체하는 데 있지 않아요. 먼저 기존 agent-run trace에 Mastra식 span 경계를 적용할 수 있는지 확인해야 해요. episodic-memory가 raw Slack log 대신 observation log를 만들 수 있는지도 살펴봐야 해요. agent/work-reviewer와 agent/code-reviewer에 step-level scorer를 붙일 수 있는지도 비교해야 해요.
+Slack Socket Mode, BullMQ, Prisma, 기존 router, retry 정책, CLI provider 격리, trace 저장소가 이미 있다면 Mastra의 primitive와 겹칠 수 있어요.
+
+model router는 provider/model 문자열과 OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY 같은 환경변수를 사용해요. 구독형 CLI를 별도 child process로 격리한 시스템에는 바로 맞지 않을 수 있어요.
+
+Mastra의 가치는 새 framework로 전면 교체하는 데 있지 않아요. 먼저 기존 agent-run trace에 Mastra식 span 경계를 적용할 수 있는지 확인해야 해요.
+
+episodic-memory가 raw Slack log 대신 observation log를 만들 수 있는지도 살펴봐야 해요. agent/work-reviewer와 agent/code-reviewer에 step-level scorer를 붙일 수 있는지도 비교해야 해요.
 
 AI 업무봇은 agent, workflow, memory, eval, observability라는 primitive를 기준으로 다시 나눠야 해요. 어느 실행을 agent로 남기고 workflow로 고정할지, 어느 품질을 scorer로 측정할지 정하는 일이 Mastra 도입 여부보다 먼저죠.
