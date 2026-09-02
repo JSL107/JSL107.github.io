@@ -236,6 +236,8 @@ ACP를 바로 표준 경계로 삼고 싶어도 v2는 조심해서 봐야 해요
 
 현실적으로는 v1/v2를 side-by-side로 두는 편이 맞아요. initialize에서 협상한 protocolVersion과 capabilities를 기준으로 분기해야 해요.
 
+### 코드 편집기 밖에서는 이점이 작아진다
+
 적용 범위에도 한계가 있어요. ACP는 “모델 호출 API”도, 일반 목적의 모든 에이전트 orchestration 표준도 아니에요. 문서의 중심은 code editor와 coding agent예요. Slack 봇이나 웹 UI도 Client가 될 수 있지만, 예시와 설계 철학은 코딩 작업의 UX에 맞춰져 있어요.
 
 파일 위치와 display terminal, MCP 서버, 권한 요청, 코드 diff 표시가 핵심 요소예요. 단순 Q&A 봇이나 데이터 요약 파이프라인에 억지로 붙이면 구현 부담만 커질 수 있어요.
@@ -250,15 +252,21 @@ TypeScript·NestJS 기반 Slack 멀티 에이전트 시스템에 ACP를 대입�
 
 ACP를 도입하면 provider의 추상화 단위를 “벤더별 CLI spawn”에서 “ACP Agent connection”으로 올릴 수 있어요. CodexCliProvider나 ClaudeCliProvider는 stdout parser 대신 initialize/session/prompt/update/cancel을 다루는 adapter가 돼요.
 
+### 실행 기록을 lifecycle 단위로 채운다
+
 agent-run도 직접 영향을 받아요. 현재 agent-run이 begin → run → finish와 EvidenceRecord를 기록한다면, ACP 이벤트로 그 사이를 더 촘촘히 채울 수 있어요. prompt accepted, state_update: running, tool_call_update를 실행 lifecycle에 매핑해요. session/request_permission, state_update: idle, stopReason: cancelled도 포함하고요.
 
 그러면 “실패했다”에서 끝나지 않아요. “권한 대기 중 취소됨”, “도구 실행 중 실패”, “프롬프트 접수 전 실패”처럼 나눌 수 있어 장애 추적이 쉬워져요.
+
+### 세션과 권한은 저장소가 아니라 UX 문제다
 
 local-sessions도 중요해요. ACP는 session/new, session/resume, session/list, session/close 같은 session lifecycle을 전제로 해요. Slack thread와 ACP session을 연결하는 방식부터 정해야 해요. 한 Slack 사용자에게 여러 concurrent session을 허용할지, session replay를 어디까지 저장할지도 결정해야 하고요.
 
 이는 단순한 저장소 문제가 아니라 UX 문제예요. 사용자가 /review-pr을 다시 눌렀을 때 이전 맥락을 이을지 새 세션으로 격리할지에 따라 결과가 달라지거든요.
 
 slack 모듈에는 권한 UX가 연결돼요. session/request_permission은 Slack approve/reject 버튼으로 자연스럽게 옮길 수 있어요. 다만 버튼 클릭을 ACP Client 응답으로 돌려줘야 해요. permission request id와 Slack interaction payload를 안정적으로 묶어야 하죠. 사용자 취소나 Slack 메시지 만료 시 cancelled 또는 reject 계열 outcome을 어떻게 보낼지도 정해야 해요.
+
+### 코딩 에이전트부터 옮기는 편이 맞다
 
 실제 에이전트 중에는 agent/code-reviewer, agent/be, agent/be-fix, agent/be-test, agent/be-schema, agent/be-sre의 우선순위가 높아요. 코드 diff와 파일 읽기, 테스트 실행, 스키마 변경 제안, 스택트레이스 분석을 다루기 때문이에요. 이런 작업은 tool call과 audit log의 가치가 커요.
 

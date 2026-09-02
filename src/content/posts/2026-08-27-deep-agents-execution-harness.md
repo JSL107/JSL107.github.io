@@ -39,11 +39,15 @@ const result = await agent.invoke({
 
 첫 번째 장치는 planning이에요. JavaScript reference의 “What’s Included”에는 planning 도구로 write_todos가 명시돼 있어요. 사람이 보기 좋은 체크리스트라기보다, 장기 작업의 현재 상태를 모델이 계속 갱신하도록 돕는 작업 상태예요. 긴 작업에서는 끝낸 일과 남은 일, 다음 행동이 쉽게 흐려지는데 todo 상태가 이런 흐림을 줄여줘요.
 
+### 파일은 첨부가 아니라 작업 공간이다
+
 두 번째 장치는 virtual filesystem이에요. 문서에 따르면 Deep Agents에는 ls, read_file, write_file, edit_file이 들어 있고 glob과 grep도 기본 파일 도구예요. read_file은 offset/limit로 큰 파일의 일부만 읽고, glob은 **/*.py 같은 패턴을 찾으며, sandbox backend가 있으면 execute도 사용할 수 있어요.
 
 LangChain 블로그는 0.2에서 filesystem backend가 더 중요해졌다고 설명해요. 이전에는 LangGraph state 위의 virtual filesystem이었어요. 0.2부터는 Backend 추상화로 LangGraph State와 LangGraph Store를 붙일 수 있고, 실제 로컬 파일시스템과 composite backend까지 연결돼요.
 
 filesystem은 단순한 첨부 저장소가 아니에요. 조사 원문과 diff 분석 로그, 초안, 검증 결과, 실패한 도구 호출의 흔적을 파일로 내리면 메인 대화 컨텍스트가 덜 오염되거든요. LangChain 블로그가 언급한 large tool result eviction도 같은 방향이라, 큰 도구 결과가 토큰 임계값을 넘으면 파일시스템에 덤프하고 오래된 대화 이력은 summarization으로 압축해요.
+
+### 서브에이전트는 맥락을 격리한다
 
 세 번째 장치는 subagent예요. Deep Agents의 subagents 문서는 subagent가 “context quarantine”에 유용하다고 설명해요. 하위 에이전트는 독립된 컨텍스트 창에서 작업해 메인 에이전트의 컨텍스트를 더럽히지 않고, 작업을 마치면 결과만 돌려줘요.
 
@@ -109,6 +113,8 @@ Anthropic은 넓은 정보 공간과 한 컨텍스트 창을 넘는 자료, 병�
 agent/pm은 planning과 궁합이 좋아요. daily plan은 결과물처럼 보이지만 실제로는 여러 입력을 우선순위에 따라 재배열하는 작업이에요. write_todos에 해당하는 내부 상태가 있으면 “오늘 계획 생성”을 “계획 초안 → 근거 보강 → 누락 확인 → 최종안”으로 바꿀 수 있어요.
 
 agent/cto는 subagent orchestration과 맞닿아 있어요. PM 작업을 BE worker로 분배한다면 모든 하위 작업의 원문을 한 컨텍스트에 넣지 말고, worker 실행은 child run으로 격리해 압축된 결과만 회수하는 편이 나아요. agent/be, agent/be-test, agent/be-schema, agent/code-reviewer는 독립 subagent 후보지만 늘 병렬화해야 하는 건 아니에요. schema 변경 제안과 Jest spec 생성은 같은 diff를 보더라도 산출물이 달라 분리할 가치가 있는 반면, 작은 수정 하나에 모든 worker를 켜면 토큰만 낭비하거든요.
+
+### 산출물이 쌓이는 쪽
 
 agent/blog와 agent/work-reviewer, autopilot과 ops-supervisor는 filesystem 기반 artifact store의 효과를 크게 볼 수 있어요. 초안과 회고 메모, 후보 목록, 검증 로그처럼 중간 산출물이 많은 작업이기 때문이에요. Slack 응답에는 최종 요약과 링크만 남기고, 긴 조사 메모와 초안 이력은 파일이나 저장소에 내려두는 편이 더 안정적이에요.
 

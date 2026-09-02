@@ -12,6 +12,8 @@ Slack에서 LLM 기반 업무봇을 운영하다 보면 프롬프트와 모델 �
 
 이 모두를 agent라고 부르면 편하지만, agent와 workflow의 경계를 나누지 않으면 추적과 평가가 어려워져요. 직접 만든 NestJS 서비스에서는 이 문제를 domain, usecase, queue, trace, eval, memory 같은 계층으로 나눠요. 자유도는 높지만 기능이 늘 때마다 실행 저장 방식과 입출력 검증, trace 범위, 평가 점수를 붙일 위치를 다시 정해야 하거든요.
 
+### Mastra 는 그 경계를 어디에 긋나
+
 Mastra는 자신을 TypeScript framework for building AI agents and applications라고 설명해요. TypeScript로 정의하며 React, Next.js, Node.js 환경에 통합하거나 standalone server로 배포할 수 있어요. agent, tool, workflow, memory, eval, observability도 한 TypeScript 프로젝트에서 같은 방식으로 정의해요.
 
 중요한 기준은 agent와 workflow의 차이예요. agent의 단계는 미리 정해지지 않으며, 모델이 어떤 tool을 몇 번 호출하고 언제 멈출지 판단하는 open-ended task에 맞아요. workflow는 순서와 데이터 흐름이 뚜렷해 실행 경로가 정해진 multi-step process에 어울려요. 모델에게 맡긴 결정과 개발자가 명시한 제어 흐름도 이 기준으로 나눌 수 있어요.
