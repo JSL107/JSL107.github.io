@@ -13,7 +13,7 @@ category: backend
 
 ## 최종 응답 테스트로는 보이지 않는 회귀
 
-LLM 애플리케이션을 처음 만들 때는 대개 출력부터 평가해요. 질문을 넣고 답변이 맞는지 확인하는 식이죠. OpenEvals README도 eval을 전통적인 소프트웨어 테스트와 비슷하다고 설명하며, LLM 애플리케이션을 production으로 가져가기 위한 출발점이라고 말해요. OpenAI Evals 문서도 모델 업그레이드와 프롬프트 변경, 모델 비교, prompt regression 방지에 eval이 필요하다고 설명해요.
+LLM 애플리케이션을 처음 만들 때는 대개 출력부터 평가해요. 질문을 넣고 답변이 맞는지 확인하는 식이죠. eval은 전통적인 소프트웨어 테스트와 비슷해요. LLM 애플리케이션을 production으로 가져가려면 여기서 출발하게 되고요. 모델을 올리거나 프롬프트를 바꿀 때, 여러 모델을 견줄 때, prompt regression을 막을 때 모두 eval이 필요해요.
 
 이 관점은 지금도 중요해요. 단순 분류나 요약, 포맷 변환처럼 “입력 → 출력” 구조가 분명한 작업은 최종 출력만 평가해도 많은 문제를 잡을 수 있거든요. OpenAI 문서의 IT ticket categorization 예시는 ticket text를 Hardware, Software, Other 중 하나로 분류해요. string_check grader로 정답 라벨과 정확히 같은지 비교하고요.
 
@@ -47,17 +47,17 @@ curl https://api.openai.com/v1/evals \
   }'
 ```
 
-에이전트는 스스로 control flow를 선택하기 때문에 여기서 한 단계 더 복잡해져요. LangChain의 AgentEvals README는 agentic application을 “문제를 풀기 위해 LLM에게 control flow의 자유를 주는 애플리케이션”으로 설명해요. 이 자유는 강력하지만, LLM이 블랙박스라 한 부분의 변경이 뒤쪽 행동에 미칠 영향을 예측하기 어렵다고도 하고요.
+에이전트는 스스로 control flow를 선택하기 때문에 여기서 한 단계 더 복잡해져요. agentic application은 문제를 풀기 위해 LLM에게 control flow의 자유를 주는 애플리케이션이에요. 이 자유는 강력하지만, LLM이 블랙박스라 한 부분의 변경이 뒤쪽 행동에 미칠 영향을 예측하기 어렵다고도 하고요.
 
 code review agent라면 최종 답변이 “전반적으로 괜찮다”로 끝나는지만 봐서는 안 돼요. PR detail과 diff를 읽었는지, 모델 provider 호출 전에 input snapshot이 남았는지, Slack formatter가 실패를 사용자가 이해할 문장으로 바꿨는지까지 확인해야 해요. 출력이 비슷해 보여도 지나온 경로가 다르면 신뢰성도 달라지니까요.
 
 ## trajectory는 실행 로그가 아니라 평가 단위다
 
-trajectory는 에이전트가 실행되는 동안 거친 메시지와 도구 호출의 sequence예요. AgentEvals와 OpenEvals 문서는 모두 agent trajectory를 OpenAI-style messages의 list로 나타낼 수 있다고 설명하죠.
+trajectory는 에이전트가 실행되는 동안 거친 메시지와 도구 호출의 sequence예요. agent trajectory는 OpenAI-style messages의 list로 나타낼 수 있어요.
 
 user message와 assistant message, assistant의 tool_calls가 여기에 들어가요. tool role의 tool result와 마지막 assistant response도 포함되고요.
 
-AgentEvals README의 TypeScript 예시는 날씨 질문을 처리하는 가장 작은 trajectory를 보여줘요. 사용자가 “SF 날씨”를 물으면 assistant가 get_weather tool을 호출하고, tool result를 받은 다음 최종 응답을 만들어요.
+가장 작은 trajectory는 이렇게 생겼어요. 사용자가 “SF 날씨”를 물으면 assistant가 get_weather tool을 호출하고, tool result를 받은 다음 최종 응답을 만들어요.
 
 ```typescript
 import {
@@ -120,19 +120,19 @@ strict는 같은 tool call이 같은 순서로 나와야 하고, unordered는 �
 
 ### 인자까지 맞춰야 하는가
 
-도구 인자를 비교하는 방식도 조절할 수 있어요. 기본적으로 같은 tool name과 같은 arguments가 필요하지만, 문서에는 `toolArgsMatchMode: "ignore"`로 인자를 무시하고 같은 도구를 호출했는지만 보는 방식이 나와요. `"subset"`, `"superset"`으로 인자의 포함 관계를 보거나, `toolArgsMatchOverrides`로 특정 도구의 비교 규칙을 바꿀 수도 있고요.
+도구 인자를 비교하는 방식도 조절할 수 있어요. 기본적으로 같은 tool name과 같은 arguments가 필요한데, `toolArgsMatchMode: "ignore"`로 인자를 무시하고 같은 도구를 호출했는지만 볼 수도 있어요. `"subset"`, `"superset"`으로 인자의 포함 관계를 보거나, `toolArgsMatchOverrides`로 특정 도구의 비교 규칙을 바꿀 수도 있고요.
 
 이 구분은 실무에서 중요해요. GitHub PR detail을 조회할 때 owner, repo, pullNumber는 정확해야 해요. 하지만 검색 query처럼 표현이 조금씩 달라질 수 있는 인자에 exact match를 걸면 테스트가 지나치게 잘 깨지거든요. trajectory eval은 모든 것을 엄격히 고정하는 장치가 아니라, 경로에서 계약으로 삼을 부분과 유연하게 둘 부분을 나누는 장치에 가까워요.
 
 ## LLM judge는 유용하지만 게이트 전체가 되면 위험하다
 
-LLM-as-judge 방식은 사람이 정답 경로를 촘촘히 작성하기 어려울 때 유용해요. OpenEvals README는 `createLLMAsJudge`를 일반적인 시작점으로 소개하며, prompt와 model을 받아 evaluator function을 만든다고 설명해요. AgentEvals도 trajectory 전용 judge prompt인 `TRAJECTORY_ACCURACY_PROMPT`를 제공해요.
+LLM-as-judge 방식은 사람이 정답 경로를 촘촘히 작성하기 어려울 때 유용해요. `createLLMAsJudge`가 일반적인 시작점이에요. prompt와 model을 받아 evaluator function을 만들어요. AgentEvals도 trajectory 전용 judge prompt인 `TRAJECTORY_ACCURACY_PROMPT`를 제공해요.
 
 이 방식은 경로의 “품질”까지 볼 수 있다는 장점이 있어요. strict match는 도구 순서가 달라지면 실패하지만, 순서가 달라도 괜찮은 경우가 있어요. 도구 이름은 맞아도 목적과 무관한 호출이 끼어들 수도 있죠. judge는 “이 경로가 요청 해결에 합리적인가”, “불필요한 우회가 있는가” 같은 질문을 다룰 수 있어요.
 
 ### 게이트 첫 줄에 두면 안 되는 이유
 
-CI gate의 첫 줄부터 LLM judge로 세우는 일은 조심해야 해요. judge도 모델 호출이라 비용과 지연이 생기고, 판정이 완전히 결정적이지 않으니까요. LangSmith 문서는 offline evaluation과 online evaluation을 구분해요.
+CI gate의 첫 줄부터 LLM judge로 세우는 일은 조심해야 해요. judge도 모델 호출이라 비용과 지연이 생기고, 판정이 완전히 결정적이지 않으니까요. offline evaluation과 online evaluation은 나눠서 봐야 해요.
 
 개발 중에는 curated dataset으로 version을 비교해 regression을 찾아요. 운영 중에는 live traffic을 sampling, filter, reference-free judge, format validation 같은 방식으로 모니터링하고요.
 
@@ -176,7 +176,7 @@ evaluation보다 observability가 먼저인 이유고, AgentRunService.execute�
 
 ## 운영 trace에서 CI fixture로
 
-구현은 AgentEvals의 TypeScript match evaluator를 현재 테스트 러너에 얹는 데서 시작해요. 문서에는 TypeScript 설치 명령으로 `npm install agentevals @langchain/core`가 제시되고 Vitest/Jest 통합도 언급돼요. 이미 TypeScript와 NestJS 테스트 문화가 있다면 별도 플랫폼보다 fixture 파일과 evaluator spec부터 만드는 편이 작아요.
+구현은 AgentEvals의 TypeScript match evaluator를 현재 테스트 러너에 얹는 데서 시작해요. TypeScript에서는 `npm install agentevals @langchain/core`로 설치하고 Vitest·Jest와 통합해요. 이미 TypeScript와 NestJS 테스트 문화가 있다면 별도 플랫폼보다 fixture 파일과 evaluator spec부터 만드는 편이 작아요.
 
 각 Slack 명령의 “필수 trajectory step”도 정해야 해요. `/review-pr`, `/today`, `/worklog`마다 정상 경로 1개와 실패 경로 1개를 골라요. 정상 경로에서는 superset match로 필수 tool call을 보장하고, 실패 경로에서는 fallback evidence와 Slack 응답을 검사해요. 그다음 LLM judge를 붙여 “경로가 과하게 돌아가지 않았는가”를 평가하면 돼요.
 
