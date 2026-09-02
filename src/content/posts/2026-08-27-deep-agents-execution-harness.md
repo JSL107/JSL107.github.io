@@ -14,7 +14,7 @@ Slack에서 에이전트에게 “오늘 할 일 정리해 줘”라고 시키�
 
 ## Deep Agents는 더 똑똑한 루프가 아니라 실행 하네스다
 
-LangChain 문서는 Deep Agents를 “agent harness”라고 설명하는데, 기존 tool-calling loop를 버리는 구조는 아니에요. LLM이 메시지를 보고 도구를 호출한 뒤 결과를 읽고 다음 행동을 정하는 기본 루프는 그대로 두고, 여기에 장기 작업에 필요한 장치를 기본으로 붙이는 거죠.
+Deep Agents는 “agent harness”인데, 기존 tool-calling loop를 버리는 구조는 아니에요. LLM이 메시지를 보고 도구를 호출한 뒤 결과를 읽고 다음 행동을 정하는 기본 루프는 그대로 두고, 여기에 장기 작업에 필요한 장치를 기본으로 붙이는 거죠.
 
 LangChain이 반복해서 언급하는 구성요소는 planning, filesystem, subagents, detailed prompts예요. JavaScript reference도 deepagents를 “batteries-included agent harness”라고 불러요. 기본 기능에는 write_todos와 파일 도구, task subagent가 들어가고, smart defaults와 context management까지 나열돼 있죠. 공식 JavaScript reference의 quickstart에서는 별도 도구나 프롬프트를 거의 붙이지 않고도 createDeepAgent를 만들 수 있어요.
 
@@ -41,19 +41,19 @@ const result = await agent.invoke({
 
 ### 파일은 첨부가 아니라 작업 공간이다
 
-두 번째 장치는 virtual filesystem이에요. 문서에 따르면 Deep Agents에는 ls, read_file, write_file, edit_file이 들어 있고 glob과 grep도 기본 파일 도구예요. read_file은 offset/limit로 큰 파일의 일부만 읽고, glob은 **/*.py 같은 패턴을 찾으며, sandbox backend가 있으면 execute도 사용할 수 있어요.
+두 번째 장치는 virtual filesystem이에요. Deep Agents에는 ls, read_file, write_file, edit_file이 들어 있고 glob과 grep도 기본 파일 도구예요. read_file은 offset/limit로 큰 파일의 일부만 읽고, glob은 **/*.py 같은 패턴을 찾으며, sandbox backend가 있으면 execute도 사용할 수 있어요.
 
-LangChain 블로그는 0.2에서 filesystem backend가 더 중요해졌다고 설명해요. 이전에는 LangGraph state 위의 virtual filesystem이었어요. 0.2부터는 Backend 추상화로 LangGraph State와 LangGraph Store를 붙일 수 있고, 실제 로컬 파일시스템과 composite backend까지 연결돼요.
+0.2에서는 filesystem backend가 더 중요해졌어요. 이전에는 LangGraph state 위의 virtual filesystem이었어요. 0.2부터는 Backend 추상화로 LangGraph State와 LangGraph Store를 붙일 수 있고, 실제 로컬 파일시스템과 composite backend까지 연결돼요.
 
 filesystem은 단순한 첨부 저장소가 아니에요. 조사 원문과 diff 분석 로그, 초안, 검증 결과, 실패한 도구 호출의 흔적을 파일로 내리면 메인 대화 컨텍스트가 덜 오염되거든요. LangChain 블로그가 언급한 large tool result eviction도 같은 방향이라, 큰 도구 결과가 토큰 임계값을 넘으면 파일시스템에 덤프하고 오래된 대화 이력은 summarization으로 압축해요.
 
 ### 서브에이전트는 맥락을 격리한다
 
-세 번째 장치는 subagent예요. Deep Agents의 subagents 문서는 subagent가 “context quarantine”에 유용하다고 설명해요. 하위 에이전트는 독립된 컨텍스트 창에서 작업해 메인 에이전트의 컨텍스트를 더럽히지 않고, 작업을 마치면 결과만 돌려줘요.
+세 번째 장치는 subagent예요. subagent는 “context quarantine”에 유용해요. 하위 에이전트는 독립된 컨텍스트 창에서 작업해 메인 에이전트의 컨텍스트를 더럽히지 않고, 작업을 마치면 결과만 돌려줘요.
 
 전문 역할을 붙일 수도 있지만, 더 본질적인 가치는 격리와 압축이에요.
 
-subagent 설정에는 별도 필드가 있어요. 문서에서는 name, description, systemPrompt를 필수로 정해요. 필요하면 tools, model, middleware, interruptOn을 줄 수 있고, skills와 responseFormat, permissions도 설정할 수 있죠.
+subagent 설정에는 별도 필드가 있어요. name, description, systemPrompt가 필수예요. 필요하면 tools, model, middleware, interruptOn을 줄 수 있고, skills와 responseFormat, permissions도 설정할 수 있죠.
 
 ```typescript
 const agent = createDeepAgent({
@@ -62,13 +62,13 @@ const agent = createDeepAgent({
 });
 ```
 
-기본 general-purpose subagent도 자동으로 추가돼요. 이 subagent는 파일 도구를 기본으로 갖고 같은 모델과 도구를 쓰지만 독립된 컨텍스트에서 실행되고, 동기 subagent를 쓰면 메인 에이전트는 결과를 받을 때까지 기다려요. 작업이 더 길거나 병렬 실행, 중간 조정, 취소가 필요하다면 async subagents를 보라고 문서에서 안내하죠.
+기본 general-purpose subagent도 자동으로 추가돼요. 이 subagent는 파일 도구를 기본으로 갖고 같은 모델과 도구를 쓰지만 독립된 컨텍스트에서 실행되고, 동기 subagent를 쓰면 메인 에이전트는 결과를 받을 때까지 기다려요. 작업이 더 길거나 병렬 실행, 중간 조정, 취소가 필요하다면 async subagents 쪽이고요.
 
 ## 사람이 끼어야 하는 지점도 하네스의 일부다
 
-장기 작업에서 위험한 순간은 모델이 “그럴듯한 다음 행동”을 너무 자연스럽게 고를 때예요. 파일 삭제나 알림 발송, 외부 시스템 변경 같은 도구 호출에는 자동 실행보다 승인 지점이 필요해요. Deep Agents의 human-in-the-loop 문서는 interruptOn으로 특정 도구를 호출하기 전에 멈추는 방식을 설명해요. 이때는 checkpointer가 필요한데, 멈춘 실행 상태를 저장했다가 사람이 승인·수정·거절한 뒤 같은 config로 재개해야 하거든요.
+장기 작업에서 위험한 순간은 모델이 “그럴듯한 다음 행동”을 너무 자연스럽게 고를 때예요. 파일 삭제나 알림 발송, 외부 시스템 변경 같은 도구 호출에는 자동 실행보다 승인 지점이 필요해요. human-in-the-loop는 interruptOn으로 특정 도구를 호출하기 전에 멈춰요. 이때는 checkpointer가 필요한데, 멈춘 실행 상태를 저장했다가 사람이 승인·수정·거절한 뒤 같은 config로 재개해야 하거든요.
 
-공식 예시에서는 remove_file, fetch_file, notify_email마다 다른 interrupt 정책을 둬요. remove_file은 기본 승인 흐름을 켜고, fetch_file은 꺼요.
+remove_file, fetch_file, notify_email마다 다른 interrupt 정책을 둘 수 있어요. remove_file은 기본 승인 흐름을 켜고, fetch_file은 꺼요.
 
 notify_email은 approve/reject만 허용해요.
 
@@ -90,7 +90,7 @@ const agent = createDeepAgent({
 });
 ```
 
-결정 타입도 중요해요. 문서는 approve, edit, reject, respond를 구분해요. 특히 respond는 사람이 도구 역할을 대신해 답할 때 쓰며, side effect가 있는 도구를 거절할 때는 쓰지 말라고 경고해요. 모델이 그 응답을 성공한 도구 결과로 해석할 수 있기 때문이죠.
+결정 타입도 중요해요. 응답은 approve, edit, reject, respond로 나뉘어요. 특히 respond는 사람이 도구 역할을 대신해 답할 때 쓰며, side effect가 있는 도구를 거절할 때는 쓰지 말라고 경고해요. 모델이 그 응답을 성공한 도구 결과로 해석할 수 있기 때문이죠.
 
 ## 멀티에이전트는 공짜 성능 향상이 아니다
 

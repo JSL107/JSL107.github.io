@@ -19,9 +19,9 @@ LiteLLM AI Gateway가 필요한 자리가 여기예요. 앱 안의 라우팅 로
 
 ## LiteLLM은 SDK보다 Proxy Server로 보는 편이 맞다
 
-LiteLLM 문서는 Python SDK와 Proxy Server를 함께 설명해요. SDK는 여러 provider를 completion() 인터페이스로 호출하고, 응답은 OpenAI Chat Completions 형식에 맞춰 받아요.
+LiteLLM은 Python SDK와 Proxy Server를 함께 제공해요. SDK는 여러 provider를 completion() 인터페이스로 호출하고, 응답은 OpenAI Chat Completions 형식에 맞춰 받아요.
 
-공식 문서와 GitHub README는 OpenAI, Anthropic, Gemini, Azure, Bedrock, Vertex AI, Ollama 등 100개 이상의 provider를 OpenAI 형식으로 호출할 수 있다고 강조해요.
+OpenAI, Anthropic, Gemini, Azure, Bedrock, Vertex AI, Ollama 등 100개 이상의 provider를 OpenAI 형식으로 호출할 수 있어요.
 
 NestJS 에이전트 시스템에는 SDK보다 Proxy Server가 더 중요해요. Proxy는 FastAPI 기반 gateway처럼 앱과 provider 사이에 서요. 앱은 OpenAI 호환 API 하나만 알면 되고, 실제 provider key와 모델 매핑은 LiteLLM 쪽에 남아요. Docker quickstart를 쓰면 gateway는 http://localhost:4000에 뜨고, Admin UI는 /ui에서 열어요.
 
@@ -63,19 +63,19 @@ LiteLLM Proxy는 API key를 들고 오는 HTTP 요청을 앞에서 받아 중계
 
 ## Docker, salt key, virtual key가 첫 번째 운영 경계다
 
-LiteLLM Docker quickstart는 간단해요. 공식 문서에 나온 명령을 실행하면 LiteLLM gateway와 Postgres가 함께 떠요. Postgres는 models, virtual keys, spend logs를 저장하는 데 써요.
+LiteLLM Docker quickstart는 간단해요. 아래 명령을 실행하면 LiteLLM gateway와 Postgres가 함께 떠요. Postgres는 models, virtual keys, spend logs를 저장하는 데 써요.
 
 ```bash
 curl -sSL https://docs.litellm.ai/docker-compose.yml | docker compose -f - up -d
 ```
 
-quickstart는 빠르게 시작하기 위한 구성이지만, 운영 전에는 LITELLM_SALT_KEY를 꼭 확인해야 해요. 문서에 따르면 이 값은 provider API key를 암호화하는 데 쓰이는데, quickstart compose에는 placeholder가 들어 있어요. 계속 운영할 환경이라면 긴 random 값으로 바꾸고 이후에는 변경하면 안 돼요. 값을 바꾸면 기존에 암호화한 credential을 복호화할 수 없으니까요.
+quickstart는 빠르게 시작하기 위한 구성이지만, 운영 전에는 LITELLM_SALT_KEY를 꼭 확인해야 해요. 이 값은 provider API key를 암호화하는 데 쓰이는데, quickstart compose에는 placeholder가 들어 있어요. 계속 운영할 환경이라면 긴 random 값으로 바꾸고 이후에는 변경하면 안 돼요. 값을 바꾸면 기존에 암호화한 credential을 복호화할 수 없으니까요.
 
 ### virtual key 는 raw key 를 앱 밖에 둔다
 
-다음으로 살펴볼 경계는 master key와 virtual key예요. virtual key 문서에 따르면 key management에는 Postgres DATABASE_URL과 master key가 필요해요. master key는 Proxy Admin key 역할을 하며 sk-로 시작해야 하고요. 설정 파일의 general_settings.master_key에 넣거나 LITELLM_MASTER_KEY 환경변수로 줄 수 있어요.
+다음으로 살펴볼 경계는 master key와 virtual key예요. key management에는 Postgres DATABASE_URL과 master key가 필요해요. master key는 Proxy Admin key 역할을 하며 sk-로 시작해야 하고요. 설정 파일의 general_settings.master_key에 넣거나 LITELLM_MASTER_KEY 환경변수로 줄 수 있어요.
 
-문서의 virtual key 생성 예시는 master key로 /key/generate를 호출해요. 아래는 문서 원문의 모델명과 식별자를 내 쪽 alias로 바꿔 적은 형태예요.
+virtual key는 master key로 /key/generate를 호출해 만들어요. 아래는 문서 원문의 모델명과 식별자를 내 쪽 alias로 바꿔 적은 형태예요.
 
 ```bash
 curl 'http://0.0.0.0:4000/key/generate' \
@@ -99,11 +99,11 @@ curl 'http://0.0.0.0:4000/key/generate' \
 
 ## Spend log는 AgentRun과 연결할 수 있어야 의미가 있다
 
-LiteLLM cost tracking 문서는 spend가 자동으로 추적되는 조건을 분명히 밝혀요. Proxy에 database와 virtual key를 설정하고 요청을 proxy로 보내면 돼요. known model의 비용은 LiteLLM의 model cost map을 기준으로 계산하고요.
+spend가 자동으로 추적되는 조건은 분명해요. Proxy에 database와 virtual key를 설정하고 요청을 proxy로 보내면 돼요. known model의 비용은 LiteLLM의 model cost map을 기준으로 계산하고요.
 
 비용은 response header의 x-litellm-response-cost와 database의 LiteLLM_SpendLogs, UI의 Usage tab에서 확인할 수 있죠.
 
-문서의 cURL 예시는 user와 metadata.tags를 함께 보내요. 필드 이름은 그대로 두고 값만 내 시스템 식별자로 옮겨 적으면 이렇게 돼요.
+cURL 예시는 user와 metadata.tags를 함께 보내요. 필드 이름은 그대로 두고 값만 내 시스템 식별자로 옮겨 적으면 이렇게 돼요.
 
 ```bash
 curl --location 'http://0.0.0.0:4000/chat/completions' \
@@ -140,7 +140,7 @@ NestJS에서는 이 필드를 AgentRun과 맞춰야 해요. 내부에 agentRunId
 
 ## Fallback은 안정성 기능이지만 품질 정책이기도 하다
 
-LiteLLM reliability 문서에서 fallback은 provider failover를 뜻해요. 호출이 num_retries 이후에도 실패하면 다른 model group으로 정해진 순서대로 넘겨요.
+LiteLLM에서 fallback은 provider failover를 뜻해요. 호출이 num_retries 이후에도 실패하면 다른 model group으로 정해진 순서대로 넘겨요.
 
 일반 오류에는 fallbacks를, content policy 위반에는 content_policy_fallbacks를, context window 초과에는 context_window_fallbacks를 쓰며 default_fallbacks도 설정할 수 있어요.
 
@@ -182,7 +182,7 @@ context window 초과 fallback도 같아서, 긴 PR diff를 더 큰 context 모�
 
 ### 검증은 실제 오류를 일으켜서
 
-테스트 방식도 주의해야 해요. reliability 문서에 따르면 LiteLLM Proxy v1.85.0부터 mock-testing flag가 incoming Proxy request에서 제거돼요. mock_testing_fallbacks와 mock_testing_context_fallbacks, mock_testing_content_policy_fallbacks는 효과가 없죠.
+테스트 방식도 주의해야 해요. LiteLLM Proxy v1.85.0부터 mock-testing flag가 incoming Proxy request에서 제거돼요. mock_testing_fallbacks와 mock_testing_context_fallbacks, mock_testing_content_policy_fallbacks는 효과가 없죠.
 
 Proxy fallback을 검증하려면 비운영 환경에서 실제 provider error를 일으킨 뒤 정상 요청으로 동작을 확인해야 해요.
 
@@ -190,11 +190,11 @@ Proxy fallback을 검증하려면 비운영 환경에서 실제 provider error�
 
 LLM gateway를 세우면 모든 요청이 한곳을 지나가요. 관측성은 좋아지지만, 민감한 prompt와 response도 한곳에 모일 수 있죠.
 
-LiteLLM UI Logs 문서는 기본값을 분명히 설명해요. success logs와 error logs는 기본으로 tracked 돼요. request/response content는 기본으로 저장하지 않아서 store_prompts_in_spend_logs로 opt-in해야 하고요. 기본적으로 prompt와 response 본문을 남기지 않으니 안전한 기본값에 가까워요.
+UI Logs의 기본값은 분명해요. success logs와 error logs는 기본으로 tracked 돼요. request/response content는 기본으로 저장하지 않아서 store_prompts_in_spend_logs로 opt-in해야 하고요. 기본적으로 prompt와 response 본문을 남기지 않으니 안전한 기본값에 가까워요.
 
 prompt 저장을 켜면 실패한 에이전트 실행의 실제 입력을 UI에서 볼 수 있어요. 다만 업무 데이터나 개인정보, credential fragment가 prompt에 섞일 수 있다면, 또 공개 저장소에 붙일 수 없는 데이터라면 먼저 꺼두는 게 맞아요. config의 litellm_settings.turn_off_message_logging은 messages/responses logging을 막고 metadata는 남기는 용도로 설명돼요.
 
-로그 retention도 확인해야 해요. UI Logs 문서는 spend logs를 저장한다면 오래된 로그를 주기적으로 지우라고 권해요. 설정 예시로 maximum_spend_logs_retention_period: "7d"와 maximum_spend_logs_retention_interval: "1d"를 들어요.
+로그 retention도 확인해야 해요. spend logs를 저장한다면 오래된 로그를 주기적으로 지우는 편이 좋아요. 설정 예시로 maximum_spend_logs_retention_period: "7d"와 maximum_spend_logs_retention_interval: "1d"를 들어요.
 
 LiteLLM은 open-source gateway로 Admin UI, virtual key, spend tracking, fallback 같은 운영 기능을 제공해요. 다만 팀별 logging을 비롯한 일부 기능은 문서에 Enterprise only 또는 Enterprise feature로 표시되니, “tag별 비용 slice까지 당장 무료로 다 된다”고 가정하면 안 돼요.
 
