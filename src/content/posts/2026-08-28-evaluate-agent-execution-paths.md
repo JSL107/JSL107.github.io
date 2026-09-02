@@ -118,6 +118,8 @@ strict는 같은 tool call이 같은 순서로 나와야 하고, unordered는 �
 | subset | 실제 호출이 기준보다 넘치지 않는지 | 불필요한 tool 사용을 막고 싶을 때 |
 | superset | 필수 호출이 포함됐는지 | 추가 탐색은 허용하되 핵심 단계는 강제할 때 |
 
+### 인자까지 맞춰야 하는가
+
 도구 인자를 비교하는 방식도 조절할 수 있어요. 기본적으로 같은 tool name과 같은 arguments가 필요하지만, 문서에는 `toolArgsMatchMode: "ignore"`로 인자를 무시하고 같은 도구를 호출했는지만 보는 방식이 나와요. `"subset"`, `"superset"`으로 인자의 포함 관계를 보거나, `toolArgsMatchOverrides`로 특정 도구의 비교 규칙을 바꿀 수도 있고요.
 
 이 구분은 실무에서 중요해요. GitHub PR detail을 조회할 때 owner, repo, pullNumber는 정확해야 해요. 하지만 검색 query처럼 표현이 조금씩 달라질 수 있는 인자에 exact match를 걸면 테스트가 지나치게 잘 깨지거든요. trajectory eval은 모든 것을 엄격히 고정하는 장치가 아니라, 경로에서 계약으로 삼을 부분과 유연하게 둘 부분을 나누는 장치에 가까워요.
@@ -127,6 +129,8 @@ strict는 같은 tool call이 같은 순서로 나와야 하고, unordered는 �
 LLM-as-judge 방식은 사람이 정답 경로를 촘촘히 작성하기 어려울 때 유용해요. OpenEvals README는 `createLLMAsJudge`를 일반적인 시작점으로 소개하며, prompt와 model을 받아 evaluator function을 만든다고 설명해요. AgentEvals도 trajectory 전용 judge prompt인 `TRAJECTORY_ACCURACY_PROMPT`를 제공해요.
 
 이 방식은 경로의 “품질”까지 볼 수 있다는 장점이 있어요. strict match는 도구 순서가 달라지면 실패하지만, 순서가 달라도 괜찮은 경우가 있어요. 도구 이름은 맞아도 목적과 무관한 호출이 끼어들 수도 있죠. judge는 “이 경로가 요청 해결에 합리적인가”, “불필요한 우회가 있는가” 같은 질문을 다룰 수 있어요.
+
+### 게이트 첫 줄에 두면 안 되는 이유
 
 CI gate의 첫 줄부터 LLM judge로 세우는 일은 조심해야 해요. judge도 모델 호출이라 비용과 지연이 생기고, 판정이 완전히 결정적이지 않으니까요. LangSmith 문서는 offline evaluation과 online evaluation을 구분해요.
 
@@ -147,6 +151,8 @@ Slack 기반 멀티 에이전트 시스템에는 평가 단위로 삼을 만한 
 가장 먼저 연결할 모듈은 agent-run, model-router, github, slack이에요. agent-run은 하나의 실행을 식별하고, model-router는 어떤 AgentType이 어떤 provider로 갔는지 보여줘요.
 
 github는 assigned issue, PR detail, diff 같은 외부 근거 조회를 맡고, slack은 slash command ack와 최종 응답 포맷을 담당해요. 이 네 지점만 이어도 “사용자 입력 → 근거 조회 → 모델 호출 → Slack 응답”의 최소 trajectory가 나와요.
+
+### 슬래시 하나가 지나는 경로
 
 `/review-pr`는 agent/code-reviewer, github, model-router, pr-review-loop, slack에 걸쳐 있어요. 최소 기준 경로에는 PR detail 조회와 diff 조회, code-reviewer provider 호출과 Slack formatter 응답이 들어가요. 여기서 superset match를 쓰면 추가 메타데이터 조회는 허용하면서 diff 조회 누락은 막을 수 있어요.
 

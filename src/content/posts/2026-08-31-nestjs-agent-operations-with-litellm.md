@@ -71,6 +71,8 @@ curl -sSL https://docs.litellm.ai/docker-compose.yml | docker compose -f - up -d
 
 quickstart는 빠르게 시작하기 위한 구성이지만, 운영 전에는 LITELLM_SALT_KEY를 꼭 확인해야 해요. 문서에 따르면 이 값은 provider API key를 암호화하는 데 쓰이는데, quickstart compose에는 placeholder가 들어 있어요. 계속 운영할 환경이라면 긴 random 값으로 바꾸고 이후에는 변경하면 안 돼요. 값을 바꾸면 기존에 암호화한 credential을 복호화할 수 없으니까요.
 
+### virtual key 는 raw key 를 앱 밖에 둔다
+
 다음으로 살펴볼 경계는 master key와 virtual key예요. virtual key 문서에 따르면 key management에는 Postgres DATABASE_URL과 master key가 필요해요. master key는 Proxy Admin key 역할을 하며 sk-로 시작해야 하고요. 설정 파일의 general_settings.master_key에 넣거나 LITELLM_MASTER_KEY 환경변수로 줄 수 있어요.
 
 문서의 virtual key 생성 예시는 master key로 /key/generate를 호출해요. 아래는 문서 원문의 모델명과 식별자를 내 쪽 alias로 바꿔 적은 형태예요.
@@ -86,6 +88,8 @@ curl 'http://0.0.0.0:4000/key/generate' \
 ```
 
 중요한 점은 raw provider key가 NestJS 앱으로 들어오지 않는다는 거예요. 앱은 LiteLLM virtual key만 갖고, 그 key에는 접근 가능한 model list, budget, rate limit 같은 제약을 걸 수 있어요. key owner나 team에 연결하면 spend도 key, user, team 단위로 추적할 수 있죠.
+
+### 키를 어떻게 나눌 것인가
 
 에이전트 시스템을 설계할 때는 virtual key를 어떻게 나눌지 먼저 정해야 해요. pm-agent, work-reviewer, code-reviewer, router-worker처럼 agent 계열별로 key를 나누면 budget과 rate limit을 분리하기 쉽죠.
 
@@ -162,6 +166,8 @@ router_settings:
   fallbacks: [{"gpt-3.5-turbo": ["gpt-4"]}]
 ```
 
+### 편리하지만 품질 정책이 갈린다
+
 이 설정은 편리해요. NestJS 코드에 retry와 provider switch를 길게 작성할 필요가 없으니까요. 다만 에이전트에서는 주의해야 하는데, fallback은 “성공률”을 높일 수 있지만 “같은 결과 품질”까지 보장하지는 않거든요.
 
 이건 남의 얘기가 아니에요. 내 시스템도 한동안 provider를 여러 곳 두고 한쪽이 실패하면 반대편으로 넘겼지만, 지금은 그 경로를 걷어냈어요. 6월에 한 곳, 7월에 나머지 한 곳을 라우팅에서 빼고 단일 provider로 고정했고, 이제 route()는 primary가 실패하면 재시도 없이 예외를 그대로 올려요. 어댑터 코드는 롤백에 대비해 남겨 뒀지만 부르는 경로는 없어요.
@@ -173,6 +179,8 @@ router_settings:
 agent/vacation처럼 자연어 파라미터만 추출하는 작업은 fallback 범위를 넓혀도 괜찮을 수 있어요. 하지만 agent/code-reviewer, agent/be-schema, agent/review-reply-judge처럼 판단 품질이 결과물의 신뢰도와 직결되는 agent는 후보를 좁혀야 하죠.
 
 context window 초과 fallback도 같아서, 긴 PR diff를 더 큰 context 모델로 넘기는 건 자연스럽지만 더 작은 모델로 줄이면 눈에 띄지 않는 품질 회귀가 생길 수 있어요.
+
+### 검증은 실제 오류를 일으켜서
 
 테스트 방식도 주의해야 해요. reliability 문서에 따르면 LiteLLM Proxy v1.85.0부터 mock-testing flag가 incoming Proxy request에서 제거돼요. mock_testing_fallbacks와 mock_testing_context_fallbacks, mock_testing_content_policy_fallbacks는 효과가 없죠.
 
@@ -200,9 +208,13 @@ model-router와 agent-run 쪽 경계는 앞에서 짚었으니, 아직 안 나�
 
 router는 자연어 멘션을 여러 worker로 dispatch해요. worker별로 virtual key나 alias를 나눠 두면 폭주한 worker만 골라서 rate limit으로 막을 수 있고요.
 
+### 새벽에 조용히 도는 쪽
+
 다른 하나는 자동 실행 계열이에요. autopilot, ops-supervisor, study-brief-cron에 resume-calibration-cron, job-application-nudge-cron이 여기 들어가죠. 사람이 직접 부르지 않으니 예산 경계가 더 중요한데, 정작 interactive command보다 눈에 덜 띄어요.
 
 새벽에 조용히 돌다가 한참 뒤 청구서로 알게 되는 쪽이 여기예요. 별도 virtual key나 team으로 묶고 max budget과 RPM/TPM을 낮게 잡고 시작하는 편이 안전해요.
+
+### 정리
 
 정리하면 이래요. LiteLLM은 provider credential, budget, rate limit, fallback, spend log를 맡고 NestJS는 AgentRun의 맥락과 EvidenceRecord를 지켜요. 에이전트별 허용 모델 범위와 품질 정책까지 gateway가 정해 주지는 않으니, 경계를 이렇게 긋고 두 쪽 기록을 연결해야 gateway가 단순한 모델 중계기를 넘어 운영 계층이 돼요.
 

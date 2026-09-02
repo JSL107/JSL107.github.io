@@ -38,6 +38,8 @@ agent identifier와 agent credential, attestation, credential provisioning을 �
 
 AIMS가 당장 별도 서버를 도입하라는 뜻은 아니에요. 도메인 모델에 “에이전트도 인증·인가 대상”이라는 축을 더하라는 요구에 가까워요.
 
+### Entra Agent ID 는 이걸 제품으로 구현했다
+
 Microsoft Entra Agent ID는 agent identity를 일반 사용자나 app registration과 구분해요. agent identity는 자체 credential이 없는 특별한 service principal이고, agent identity blueprint가 대신 token을 얻어요. accountable human 또는 group을 뜻하는 sponsor도 두고요.
 
 권한 면에서는 Global Administrator와 Privileged Role Administrator를 차단해요. User Administrator 같은 고위험 directory role과 custom role, role-assignable group membership도 제한하고요. 에이전트에는 sponsor와 권한 제한, 조건부 접근, 감사까지 갖춘 별도의 수명주기가 필요하다는 거죠. 벤더 기능을 그대로 쓰지 않더라도 이런 원칙은 가져올 수 있어요.
@@ -87,6 +89,8 @@ Transaction Tokens draft는 call chain 전체에 필요한 정보를 전파하�
 Txn-Token은 OAuth access token이나 authentication credential이 아니에요. trust domain 내부의 downstream workload가 후속 호출을 authorize할 때 쓰죠. draft에 따르면 각 trust domain에는 정확히 하나의 logical Transaction Token Service가 있어야 해요.
 
 이 개념을 적용하면 worker queue의 payload에 장기 refresh token을 넣지 않아도 돼요.
+
+### 토큰 안에는 무엇이 들어가나
 
 대신 “이번 PR 리뷰 요청”이나 “이번 crawler job”, “이번 schema 변경 제안”에 필요한 맥락만 짧게 묶어요.
 
@@ -162,11 +166,15 @@ agent-run은 실행 단위의 진실 원장이 되어야 해요. begin → run �
 
 actorUserId는 Slack command 또는 natural language mention을 시작한 사람이고, agentIdentity는 판단하고 도구를 호출한 agent workload예요. delegatedScopes에는 이번 실행에서 허용된 범위를 담고, approvalId는 사람이 승인한 write action의 근거가 되죠. toolCallAuditId는 GitHub, Prisma, crawler, CLI provider의 세부 호출 기록과 연결돼요.
 
+### 체인을 타고 흐르는 권한
+
 be-chain과 agent/cto에서는 CTO agent가 PM 작업을 BE worker로 분배하고, agent/be는 구현 계획을, agent/be-diff-generator나 agent/be-test는 후속 산출물을 만들어요. 최초 Slack 사용자부터 마지막 worker까지를 단일 run log로 뭉개면 중간 actor가 사라져 누가 무엇을 위임했는지 알 수 없어요. parent-child AgentRun 관계와 delegated scope가 필요한 이유죠.
 
 slack과 github는 trust boundary에 가까워요. Slack은 사용자 intent와 interaction context가 들어오는 입구고, GitHub는 실제 write action이 일어나는 외부 resource server죠.
 
 agent/code-reviewer, agent/issue-labeler, pr-review-loop, webhook에는 자동 트리거와 사용자 트리거가 섞여 들어올 수 있어요. webhook 자동 트리거에는 actorUserId가 없거나 system actor가 들어가는 반면, Slack command에는 명시적인 사용자 actor가 있죠. 이 차이를 모델에 남겨야 GitHub write 권한도 다르게 줄 수 있어요.
+
+### 범위는 좁게 끊어야 한다
 
 scope vocabulary는 좁게 잡아야 해요. write:github처럼 넓은 범위로 두지 말고 github.pr.comment, github.issue.label처럼 실제 tool adapter가 검사할 단위로 나누고, crawler.job.create와 prisma.schema.propose도 별도 범위로 구분해야 해요. 그래야 user → agent → tool의 각 호출에 이번 실행에 필요한 권한만 전달할 수 있어요.
 
