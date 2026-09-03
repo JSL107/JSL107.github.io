@@ -4,11 +4,11 @@ description: "Cloudflare Agents SDK의 Code Mode가 복잡한 도구 실행 계�
 pubDatetime: 2026-08-22T19:05:00+09:00
 category: backend
 ---
-Slack에서 “이 PR 리뷰해줘”라고 말하는 건 겉보기에 단순하지만, 구현부에서는 여러 도구를 호출하고 큰 중간 결과까지 처리해야 합니다. Cloudflare Agents SDK의 Code Mode는 도구를 하나 더 보태는 기능이 아니에요. 커진 도구 목록을 코드로 조합하고 필요한 결과만 모델에 돌려주는 실행 방식이죠.
+Slack에서 “이 PR 리뷰해줘”라고 말하는 건 겉보기에 단순하지만, 구현부에서는 여러 도구를 호출하고 큰 중간 결과까지 처리해야 해요. Cloudflare Agents SDK의 Code Mode는 도구를 하나 더 보태는 기능이 아니에요. 커진 도구 목록을 코드로 조합하고 필요한 결과만 모델에 돌려주는 실행 방식이죠. 아래는 공식 문서와 저장소 README를 읽고 정리한 내용이고, 제 Slack 에이전트에 붙여 돌려본 건 아직 아니에요.
 
 ## 도구가 많아질수록 생기는 문제
 
-PR 메타데이터를 조회한 뒤 파일 목록을 분류하고 큰 diff는 나눠야 하며, 테스트·설정 파일을 구분하고 기존 리뷰 스레드도 확인해야 해요. 도구 호출 과정은 한 줄로 끝나지 않고, 그 자체로 작은 실행 계획이 돼요.
+도구 호출 과정은 한 줄로 끝나지 않고, 그 자체로 작은 실행 계획이 돼요. PR 메타데이터를 조회한 뒤 파일 목록을 분류하고 큰 diff는 나눠야 하며, 테스트·설정 파일을 구분하고 기존 리뷰 스레드도 확인해야 하니까요.
 
 일반적인 tool calling은 단계마다 모델 밖으로 나갔다가 결과와 함께 모델 컨텍스트로 돌아와요. 중간 결과가 커지면 부담도 늘고, 최종 판단에 필요 없는 원본 목록까지 모델이 계속 봐야 하니까요. 긴 diff와 임시 분류 결과도 마찬가지예요.
 
@@ -50,9 +50,11 @@ Node.js API, host credentials, process, require, unrestricted network access는 
 
 외부 작업은 connector global이나 executor가 명시적으로 제공한 capability를 통해야 해요.
 
-## Durable runtime이 제공하는 실행 경계
+## Durable runtime이 실행 경계를 대신 잡아 준다
 
-Cloudflare의 durable runtime은 Code Mode를 Agents SDK 애플리케이션에 연결해요. Durable Object와 Vite, Worker Loader binding이 전제죠. Durable Object hibernation 뒤에도 execution history와 pending approvals를 저장해요. reusable snippets와 rollback metadata도 남겨두고요.
+### Durable Object와 Vite부터 맞춰야 한다
+
+Code Mode를 Agents SDK 애플리케이션에 붙일 때 실행 상태를 지켜 주는 쪽은 Cloudflare의 durable runtime이에요. 전제는 Durable Object와 Vite, Worker Loader binding이에요. 대신 Durable Object hibernation 뒤에도 execution history와 pending approvals를 저장하고, reusable snippets와 rollback metadata까지 남겨 둬요.
 
 ```plain text
 compatibility_date = "2026-08-22"
@@ -77,9 +79,9 @@ export default defineConfig({
 
 Code Mode Vite plugin은 Worker entry module에서 CodemodeRuntime facet class를 export해요. plugin을 쓰지 않는다면 `export { CodemodeRuntime } from "@cloudflare/codemode";`를 직접 추가해야 해요. 런타임 상태가 Durable Object facet에 저장되는 건 Workers runtime이 facet class를 ctx.exports에서 찾기 때문이죠.
 
-connector는 평범한 class예요. name()은 sandbox global 이름이 되고, instructions()는 모델에 사용법을 알려주며, tools()는 호출할 수 있는 method를 정의해요. NotesConnector 예시에서는 createNote가 requiresApproval: true로 설정돼 있어 실행 전에 멈추고요.
+### connector는 평범한 class로 쓴다
 
-revert 함수는 rollback compensation도 제공해요.
+connector는 평범한 class예요. name()은 sandbox global 이름이 되고, instructions()는 모델에 사용법을 알려주며, tools()는 호출할 수 있는 method를 정의해요. NotesConnector 예시에서는 createNote가 requiresApproval: true로 설정돼 있어 실행 전에 멈추고, revert 함수는 rollback compensation도 제공해요.
 
 ## 모든 작업에 Code Mode가 필요한 것은 아니다
 
@@ -91,26 +93,24 @@ Code Mode는 experimental이고, Cloudflare 문서도 breaking changes 가능성
 
 rollback 가능 여부와 실행 로그에 민감정보가 남지 않는지도 확인해야 해요.
 
-## Slack 에이전트에 적용할 수 있는 지점
+## 우리 Slack 에이전트라면 여기부터 바꾼다
 
 첫 번째 후보는 agent/code-reviewer이고, 여기에는 github와 pr-review-loop도 포함돼요. PR detail, file list, diff, 기존 review thread, 체크 결과를 조합해도 모든 diff를 모델에 넣을 필요는 없어요. sandbox 안에서 파일 크기와 확장자로 분류한 뒤 리뷰 가치가 낮은 generated file을 제외하고, “검토해야 할 변경 묶음”만 반환할 수 있죠.
 
-두 번째 후보는 slack-collector와 slack-inbox예요. Slack thread context를 모을 때는 메시지 수와 작성자, 시간 범위, 첨부 링크에 따라 분기가 많아요. connector method로 메시지를 가져온 뒤 bot 메시지와 중복 인용, 오래된 context를 줄이는 거예요.
-
-최종 context pack만 반환하는 방식이 맞죠.
+두 번째 후보는 slack-collector와 slack-inbox예요. Slack thread context를 모을 때는 메시지 수와 작성자, 시간 범위, 첨부 링크에 따라 분기가 많아요. connector method로 메시지를 가져온 뒤 bot 메시지와 중복 인용, 오래된 context를 줄이고 최종 context pack만 반환하는 방식이 맞죠.
 
 세 번째 후보는 crawler예요. Puppeteer와 Cheerio로 가져온 결과는 원문이 길고 잡음도 많죠. Code Mode가 crawler 자체를 대신할 필요는 없고, 여러 crawl 결과에서 제목·본문 후보·링크를 걸러 모델이 읽을 최소 자료로 줄이는 orchestration layer가 될 수 있어요.
 
 반대로 agent/vacation처럼 자연어 파라미터 추출만 LLM에 맡기고 계산은 결정적인 모듈에서 처리하는 작업에는 맞지 않으니 후보에서 빼는 게 맞아요. agent-run은 실행 lifecycle과 evidence 기록을 맡는 핵심 인프라라, Code Mode로 옮기기보다 실행을 감싸는 바깥 감사 레이어로 남는 편이 자연스럽고요.
 
-## 도입 전에 확인할 조건
+## 붙이기 전에 두 가지를 먼저 확인한다
 
 먼저 GitHub PR diff 수집처럼 side effect가 없는 읽기 전용 connector로 검증해야 해요. search, describe, connector method 호출과 최종 result shaping이 한 번에 동작하는지 확인하는 거예요. 비교 기준은 모델 라운드트립 횟수가 아니라, 중간 데이터가 모델 컨텍스트로 얼마나 덜 돌아오는지예요.
 
 그다음 requiresApproval: true인 method가 실제로 paused 상태와 pending action으로 멈추는지 확인해야 해요. 같은 execution을 replay할 때 codemode.step()으로 기록한 작업이 기대대로 재사용되는지도 봐야 하고요. 이 두 가지 검증이 끝나기 전에는 쓰기 작업이나 운영 자동화에 연결하면 안 돼요.
 
-Code Mode의 가치는 단순히 도구 호출을 줄이는 데 있지 않아요. 도구가 많고 중간 결과가 큰 작업에서 제어 흐름과 데이터 축약을 sandbox로 옮기고, 모델에는 판단에 필요한 결과만 전달하는 데 있어요.
+Code Mode에서 제일 마음에 걸린 건 도구 호출 횟수가 아니라, 모델이 안 봐도 되는 데이터를 걸러 낼 책임이 어디로 가느냐였어요. 그 책임을 sandbox 코드로 옮기면 이번엔 connector 설계가 새 병목이 되고, 어떤 method를 읽기 전용으로 둘지는 결국 사람이 정해야 해요.
 
-고정된 작업까지 모두 바꾸기보다, 복잡한 orchestration 구간부터 읽기 전용으로 검증하는 게 적절하죠.
+도구 목록이 늘어날수록 그 판단을 미루기가 어려워지니, agent/code-reviewer의 diff 축약처럼 무엇을 버릴지 이미 아는 곳부터 손대는 게 낫겠다 싶어요.
 
 출처는 Cloudflare Agents Code Mode 문서와 How Code Mode works 문서예요. Durable runtime 문서와 cloudflare/agents 공식 저장소 README도 참고했어요.

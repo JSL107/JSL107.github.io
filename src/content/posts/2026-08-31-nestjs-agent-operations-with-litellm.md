@@ -5,7 +5,7 @@ pubDatetime: 2026-08-31T19:13:00+09:00
 category: backend
 ---
 
-## 모델 라우팅이 코드 안에 있을 때 생기는 운영 문제
+## 모델 라우팅을 코드에 두면 운영이 배포 속도에 묶인다
 
 Slack 명령 하나가 LLM 호출 한 번으로 끝난다면 모델 라우팅을 코드에 넣어도 큰 문제는 없어요. pm 에이전트에는 이 모델, code-reviewer에는 저 모델을 쓰고, 실패하면 예외를 던져요. 배포 전에 테스트하고 문제가 생기면 다시 고치면 돼요.
 
@@ -21,9 +21,9 @@ LiteLLM AI Gateway가 필요한 자리가 여기예요. 앱 안의 라우팅 로
 
 LiteLLM은 Python SDK와 Proxy Server를 함께 제공해요. SDK는 여러 provider를 completion() 인터페이스로 호출하고, 응답은 OpenAI Chat Completions 형식에 맞춰 받아요.
 
-OpenAI, Anthropic, Gemini, Azure, Bedrock, Vertex AI, Ollama 등 100개 이상의 provider를 OpenAI 형식으로 호출할 수 있어요.
+provider를 갈아 끼우는 비용이 낮다는 게 SDK 쪽의 값이에요. OpenAI, Anthropic, Gemini, Azure, Bedrock, Vertex AI, Ollama 등 100개 이상의 provider를 OpenAI 형식으로 호출할 수 있어요.
 
-NestJS 에이전트 시스템에는 SDK보다 Proxy Server가 더 중요해요. Proxy는 FastAPI 기반 gateway처럼 앱과 provider 사이에 서요. 앱은 OpenAI 호환 API 하나만 알면 되고, 실제 provider key와 모델 매핑은 LiteLLM 쪽에 남아요. Docker quickstart를 쓰면 gateway는 http://localhost:4000에 뜨고, Admin UI는 /ui에서 열어요.
+NestJS 에이전트 시스템에는 SDK보다 Proxy Server가 더 중요해요. Proxy는 FastAPI 기반 gateway처럼 앱과 provider 사이에 서요. 앱은 OpenAI 호환 API 하나만 알면 되고, 실제 provider key와 모델 매핑은 LiteLLM 쪽에 남아요. 아직 직접 띄워보진 않았지만, Docker quickstart를 쓰면 gateway는 http://localhost:4000에 뜨고, Admin UI는 /ui에서 열어요.
 
 문서의 JavaScript 예시를 보면 이 구조가 잘 드러나요. OpenAI SDK는 그대로 쓰고 baseURL만 LiteLLM으로 바꿔요.
 
@@ -43,7 +43,9 @@ const response = await client.chat.completions.create({
 console.log(response.choices[0].message.content);
 ```
 
-NestJS에서는 이 점이 가장 큰 장점이에요. ModelRouterUsecase가 provider별 SDK를 직접 알 필요가 줄어요. 앱은 pm-agent, work-reviewer, code-reviewer, router-worker 같은 gateway model alias만 호출하면 되고요. alias가 실제로 연결할 provider와 모델은 LiteLLM 설정이나 Admin UI에서 바꿀 수 있어요.
+### 배포 대신 설정으로 alias만 갈아 끼운다
+
+NestJS에서는 이 점이 가장 큰 장점이에요. provider별 SDK를 직접 감싸는 구조라면 ModelRouterUsecase가 그 SDK들을 알 필요가 줄어요. 앱은 pm-agent, work-reviewer, code-reviewer, router-worker 같은 gateway model alias만 호출하면 되고요. alias가 실제로 연결할 provider와 모델은 LiteLLM 설정이나 Admin UI에서 바꿀 수 있어요.
 
 기존에는 “AgentType → provider”를 바꿀 때마다 코드를 배포했어요. LiteLLM을 쓰면 앱은 “AgentType → gateway alias”까지만 알아요. 이후의 provider 운영 정책은 gateway가 맡거든요.
 
@@ -59,7 +61,7 @@ LiteLLM Proxy는 API key를 들고 오는 HTTP 요청을 앞에서 받아 중계
 
 비용을 들여다보려고 gateway를 세우는데 그 도입 자체가 비용을 올리는 방향이라면, 계산은 거기서부터 시작해야 맞아요. 지금 구독으로 한 달에 얼마를 쓰는지, 같은 호출량을 API로 옮기면 얼마가 되는지. 이 두 숫자가 나오기 전까지 아래 이야기는 전부 “그럴 수 있다면”이라는 가정 위에 서 있어요.
 
-그래서 이 글의 나머지는 도입기가 아니라 설계 메모예요. 언젠가 종량제로 옮길 때 다시 꺼내 볼 경계선을 미리 그려두는 쪽에 가까워요.
+그래서 이 글의 나머지는 도입기가 아니라 설계 메모예요. LiteLLM은 아직 한 번도 띄워보지 않았고, 아래 동작은 전부 공식 문서를 읽고 내 시스템에 비춰 정리한 것이에요. 언젠가 종량제로 옮길 때 다시 꺼내 볼 경계선을 미리 그려두는 쪽에 가까워요.
 
 ## Docker, salt key, virtual key가 첫 번째 운영 경계다
 
@@ -73,7 +75,7 @@ quickstart는 빠르게 시작하기 위한 구성이지만, 운영 전에는 LI
 
 ### virtual key 는 raw key 를 앱 밖에 둔다
 
-다음으로 살펴볼 경계는 master key와 virtual key예요. key management에는 Postgres DATABASE_URL과 master key가 필요해요. master key는 Proxy Admin key 역할을 하며 sk-로 시작해야 하고요. 설정 파일의 general_settings.master_key에 넣거나 LITELLM_MASTER_KEY 환경변수로 줄 수 있어요.
+그다음 경계는 master key와 virtual key예요. key management에는 Postgres DATABASE_URL과 master key가 필요해요. master key는 Proxy Admin key 역할을 하며 sk-로 시작해야 하고요. 설정 파일의 general_settings.master_key에 넣거나 LITELLM_MASTER_KEY 환경변수로 줄 수 있어요.
 
 virtual key는 master key로 /key/generate를 호출해 만들어요. 아래는 문서 원문의 모델명과 식별자를 내 쪽 alias로 바꿔 적은 형태예요.
 
@@ -99,7 +101,7 @@ curl 'http://0.0.0.0:4000/key/generate' \
 
 ## Spend log는 AgentRun과 연결할 수 있어야 의미가 있다
 
-spend가 자동으로 추적되는 조건은 분명해요. Proxy에 database와 virtual key를 설정하고 요청을 proxy로 보내면 돼요. known model의 비용은 LiteLLM의 model cost map을 기준으로 계산하고요.
+spend는 조건만 갖추면 알아서 쌓여요. Proxy에 database와 virtual key를 설정하고 요청을 proxy로 보내면 돼요. known model의 비용은 LiteLLM의 model cost map을 기준으로 계산하고요.
 
 비용은 response header의 x-litellm-response-cost와 database의 LiteLLM_SpendLogs, UI의 Usage tab에서 확인할 수 있죠.
 
@@ -132,6 +134,8 @@ curl --location 'http://0.0.0.0:4000/chat/completions' \
 
 여기서 중요한 건 필드의 형태인데, user는 end user/customer 단위 추적에 쓰고 metadata.tags는 tag 기반 spend tracking에 써요. 다만 문서는 metadata.tags 기반 custom tag spend tracking을 Enterprise로 표시해요.
 
+### 같은 식별자를 양쪽에 심어 둔다
+
 NestJS에서는 이 필드를 AgentRun과 맞춰야 해요. 내부에 agentRunId, agentType, slackTeamId 같은 값이 있다면 요청 metadata나 tag에도 같은 값을 넣어요. 그래야 LiteLLM spend log와 내부 EvidenceRecord를 나중에 join할 수 있거든요.
 
 “이번 주 code-reviewer 비용이 왜 튀었는가”를 확인할 때는 LiteLLM의 model_group, token count, spend를 함께 봐요. 내부의 PR diff 크기, 실패 사유, retry 기록도 같이 확인할 수 있어요.
@@ -142,7 +146,7 @@ NestJS에서는 이 필드를 AgentRun과 맞춰야 해요. 내부에 agentRunId
 
 LiteLLM에서 fallback은 provider failover를 뜻해요. 호출이 num_retries 이후에도 실패하면 다른 model group으로 정해진 순서대로 넘겨요.
 
-일반 오류에는 fallbacks를, content policy 위반에는 content_policy_fallbacks를, context window 초과에는 context_window_fallbacks를 쓰며 default_fallbacks도 설정할 수 있어요.
+실패 종류마다 다른 fallback을 걸 수 있다는 게 이 기능의 실제 쓸모예요. 일반 오류에는 fallbacks를, content policy 위반에는 content_policy_fallbacks를, context window 초과에는 context_window_fallbacks를 쓰며 default_fallbacks도 설정할 수 있어요.
 
 Proxy 설정 예시는 router_settings.fallbacks를 두는 방식이에요.
 
@@ -170,6 +174,8 @@ router_settings:
 
 이 설정은 편리해요. NestJS 코드에 retry와 provider switch를 길게 작성할 필요가 없으니까요. 다만 에이전트에서는 주의해야 하는데, fallback은 “성공률”을 높일 수 있지만 “같은 결과 품질”까지 보장하지는 않거든요.
 
+### fallback을 걷어내고 얻은 것
+
 이건 남의 얘기가 아니에요. 내 시스템도 한동안 provider를 여러 곳 두고 한쪽이 실패하면 반대편으로 넘겼지만, 지금은 그 경로를 걷어냈어요. 6월에 한 곳, 7월에 나머지 한 곳을 라우팅에서 빼고 단일 provider로 고정했고, 이제 route()는 primary가 실패하면 재시도 없이 예외를 그대로 올려요. 어댑터 코드는 롤백에 대비해 남겨 뒀지만 부르는 경로는 없어요.
 
 대신 실패를 감추지 않는 쪽에 힘을 줬어요. 사용량 한도에 걸린 거라면 한도를 넘겼다는 사실과 리셋 시각을 Slack 메시지에 함께 붙여 내려요.
@@ -190,11 +196,13 @@ Proxy fallback을 검증하려면 비운영 환경에서 실제 provider error�
 
 LLM gateway를 세우면 모든 요청이 한곳을 지나가요. 관측성은 좋아지지만, 민감한 prompt와 response도 한곳에 모일 수 있죠.
 
-UI Logs의 기본값은 분명해요. success logs와 error logs는 기본으로 tracked 돼요. request/response content는 기본으로 저장하지 않아서 store_prompts_in_spend_logs로 opt-in해야 하고요. 기본적으로 prompt와 response 본문을 남기지 않으니 안전한 기본값에 가까워요.
+UI Logs는 무엇을 남기고 무엇을 남기지 않는지가 기본값에서 이미 갈려 있어요. success logs와 error logs는 기본으로 tracked 돼요. request/response content는 기본으로 저장하지 않아서 store_prompts_in_spend_logs로 opt-in해야 하고요. 기본적으로 prompt와 response 본문을 남기지 않으니 안전한 기본값에 가까워요.
 
 prompt 저장을 켜면 실패한 에이전트 실행의 실제 입력을 UI에서 볼 수 있어요. 다만 업무 데이터나 개인정보, credential fragment가 prompt에 섞일 수 있다면, 또 공개 저장소에 붙일 수 없는 데이터라면 먼저 꺼두는 게 맞아요. config의 litellm_settings.turn_off_message_logging은 messages/responses logging을 막고 metadata는 남기는 용도로 설명돼요.
 
 로그 retention도 확인해야 해요. spend logs를 저장한다면 오래된 로그를 주기적으로 지우는 편이 좋아요. 설정 예시로 maximum_spend_logs_retention_period: "7d"와 maximum_spend_logs_retention_interval: "1d"를 들어요.
+
+### OSS와 Enterprise를 먼저 갈라 본다
 
 LiteLLM은 open-source gateway로 Admin UI, virtual key, spend tracking, fallback 같은 운영 기능을 제공해요. 다만 팀별 logging을 비롯한 일부 기능은 문서에 Enterprise only 또는 Enterprise feature로 표시되니, “tag별 비용 slice까지 당장 무료로 다 된다”고 가정하면 안 돼요.
 
@@ -214,9 +222,9 @@ router는 자연어 멘션을 여러 worker로 dispatch해요. worker별로 virt
 
 새벽에 조용히 돌다가 한참 뒤 청구서로 알게 되는 쪽이 여기예요. 별도 virtual key나 team으로 묶고 max budget과 RPM/TPM을 낮게 잡고 시작하는 편이 안전해요.
 
-### 정리
+### 경계를 이렇게 긋고 숫자를 먼저 낸다
 
-정리하면 이래요. LiteLLM은 provider credential, budget, rate limit, fallback, spend log를 맡고 NestJS는 AgentRun의 맥락과 EvidenceRecord를 지켜요. 에이전트별 허용 모델 범위와 품질 정책까지 gateway가 정해 주지는 않으니, 경계를 이렇게 긋고 두 쪽 기록을 연결해야 gateway가 단순한 모델 중계기를 넘어 운영 계층이 돼요.
+LiteLLM은 provider credential, budget, rate limit, fallback, spend log를 맡고 NestJS는 AgentRun의 맥락과 EvidenceRecord를 지켜요. 에이전트별 허용 모델 범위와 품질 정책까지 gateway가 정해 주지는 않으니, 경계를 이렇게 긋고 두 쪽 기록을 연결해야 gateway가 단순한 모델 중계기를 넘어 운영 계층이 돼요.
 
 다만 내 경우엔 그 앞에 숙제가 하나 남아요. 지금은 CLI 프로세스로 모델을 부르고 있어서 이 그림이 그대로 얹히지 않으니, 다음에 할 일은 LiteLLM을 띄워보는 게 아니라 구독으로 쓰는 지금 호출량을 종량 기준으로 환산해 보는 거예요. 그 숫자가 나오면 이 메모를 다시 꺼내면 돼요.
 
