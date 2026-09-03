@@ -5,7 +5,7 @@ pubDatetime: 2026-09-01T19:07:00+09:00
 category: backend
 ---
 
-Slack에서 Coding Agent CLI를 감싸는 구조는 쉽게 만들 수 있어요. 하지만 운영에 들어가면 실행 상태와 도구 호출, 권한 요청, 취소를 stdout만으로 구분하기 어렵죠. ACP는 이를 Client와 Agent 사이의 구조화된 사건으로 다뤄요. 다만 적용 범위와 protocol version을 따져 도입해야 해요.
+Slack에서 Coding Agent CLI를 감싸는 구조는 쉽게 만들 수 있어요. 하지만 운영에 들어가면 실행 상태와 도구 호출, 권한 요청, 취소를 stdout만으로 구분하기 어렵죠. ACP는 이를 Client와 Agent 사이의 구조화된 사건으로 다뤄요. 아래는 공식 문서와 스키마를 읽고 제 시스템에 비춰 본 정리이지 ACP Client를 붙여 돌려본 기록은 아니에요. 다만 적용 범위와 protocol version을 따져 도입해야 해요.
 
 ## CLI를 감싸는 순간 생기는 운영 문제
 
@@ -19,13 +19,13 @@ Agent Client Protocol, 줄여서 ACP가 필요한 곳이 바로 이 경계예요
 
 세션과 프롬프트, 도구 호출, 권한 요청, 취소를 JSON-RPC 메시지로 나눠요. 기존 CLI 래핑이 “프로세스를 실행하고 텍스트를 읽는 방식”이라면, ACP는 “Client와 Agent 사이의 사건을 구조화해 주고받는 방식”에 가까워요.
 
-## ACP가 표준화하려는 경계
+## ACP가 그은 선은 에디터와 에이전트 사이다
 
 ACP는 code editor 또는 IDE와 coding agent 사이의 통신 표준이에요. 특정 에디터가 특정 에이전트에 묶이지 않게 하는 게 목표예요. 에디터와 에이전트가 상대별 API를 일일이 구현하지 않도록 공통 계약을 두자는 발상이죠. Language Server Protocol이 언어 서버 통합을 표준화한 것과 비슷한 역할이죠.
 
-아키텍처에서 Client는 사용자 인터페이스와 작업 디렉터리, MCP 서버 설정, 권한 UX를 맡아요. Agent는 세션 안에서 계획을 세우고 도구를 호출하며 결과를 스트리밍해요. 로컬 에이전트는 보통 Client의 subprocess로 실행돼요. stdin/stdout 위에서 JSON-RPC로 통신하죠. 원격 에이전트에는 HTTP나 WebSocket도 상정하지만 remote agent 지원은 아직 진행 중이에요.
+이 구조에서 눈여겨볼 건 역할이 완전히 갈라진다는 점이에요. Client는 사용자 인터페이스와 작업 디렉터리, MCP 서버 설정, 권한 UX를 맡아요. Agent는 세션 안에서 계획을 세우고 도구를 호출하며 결과를 스트리밍해요. 로컬 에이전트는 보통 Client의 subprocess로 실행돼 stdin/stdout 위에서 JSON-RPC로 통신하죠. 원격 에이전트에는 HTTP나 WebSocket도 상정하지만 remote agent 지원은 아직 진행 중이에요.
 
-이 차이는 꽤 커요. 기존 CLI provider에서는 spawn()의 lifecycle이 에이전트 실행 lifecycle과 같아요. 프로세스가 살아 있으면 실행 중이고, 종료되면 끝난 것으로 봐요. ACP에서는 프로세스 생존 여부와 세션 상태가 나뉘어요.
+이 차이가 생각보다 큰 이유는, 기존 CLI provider에서 spawn()의 lifecycle이 곧 에이전트 실행 lifecycle이라 프로세스가 살아 있으면 실행 중, 종료되면 끝난 것으로 봐야 했기 때문이에요. ACP에서는 프로세스 생존 여부와 세션 상태가 갈라지니, 프로세스가 떠 있어도 세션은 idle일 수 있고 그 반대도 성립하죠.
 
 하나의 연결에서 여러 concurrent session을 지원할 수 있어요. Agent는 session/update notification으로 UI가 이해할 사건을 계속 보내요. 중심이 “프로세스 출력”에서 “세션 이벤트”로 옮겨가는 셈이죠.
 
@@ -39,7 +39,7 @@ ACP는 code editor 또는 IDE와 coding agent 사이의 통신 표준이에요. 
 
 ## 프롬프트 응답은 최종 답변이 아니다
 
-ACP v2에서 먼저 살펴볼 변화는 session/prompt의 의미예요. prompt lifecycle은 접수와 완료를 명확히 나눠요. Client가 session/prompt를 보내면 Agent는 프롬프트를 “받아들였을 때” 빈 result를 돌려줘요. 이 응답은 작업 완료가 아니에요. 실제 진행과 출력, 완료는 이후 session/update notification으로 오거든요.
+session/prompt의 응답을 작업 완료로 읽으면 상태 표시가 통째로 어긋나요. ACP v2의 prompt lifecycle이 접수와 완료를 아예 다른 사건으로 갈라놓기 때문이에요. Client가 session/prompt를 보내면 Agent는 프롬프트를 “받아들였을 때” 빈 result를 돌려줘요. 이 응답은 작업 완료가 아니에요. 실제 진행과 출력, 완료는 이후 session/update notification으로 오거든요.
 
 요청은 이렇게 시작해요.
 
@@ -166,7 +166,7 @@ tool kind에는 read, edit, delete, move, search, execute, think, fetch, other�
 
 audit log에서도 toolCallId, kind, status, locations, rawInput, rawOutput 같은 필드는 stdout보다 훨씬 다루기 쉬워요.
 
-중요한 점은 tool call update가 세션 상태를 바꾸지 않는다는 거예요. Agent가 idle을 보고한 동안에도 tool call update가 올 수 있어요. 이 이벤트 자체는 상태를 바꾸지 않고요. foreground 상태는 state_update가, 도구 표시와 진행 로그는 tool call 이벤트가 맡아요. 운영 화면에서 꽤 실용적인 구분이에요.
+중요한 점은 tool call update가 세션 상태를 바꾸지 않는다는 거예요. Agent가 idle을 보고한 동안에도 tool call update는 올 수 있고, 그 이벤트 자체가 상태를 바꾸지는 않아요. foreground 상태는 state_update가, 도구 표시와 진행 로그는 tool call 이벤트가 맡아요. 운영 화면에서 꽤 실용적인 구분이에요.
 
 ## 권한 요청과 사용자 입력도 프로토콜 안에 있다
 
@@ -220,9 +220,9 @@ Client는 사용자가 고른 값을 result로 돌려줘요.
 }
 ```
 
-취소에도 별도의 의미가 있어요. 현재 active work가 취소되면 Client는 permission request에 cancelled outcome으로 응답해야 해요. Agent가 이해하지 못하는 outcome을 approval로 취급해서도 안 돼요. 알 수 없는 응답을 허용으로 해석하면 권한 UX가 보안 장치가 아니라 장식이 되니까요.
+취소에도 별도의 의미가 있어서, 현재 active work가 취소되면 Client는 permission request에 cancelled outcome으로 응답해야 해요. Agent가 이해하지 못하는 outcome을 approval로 취급해서도 안 돼요. 알 수 없는 응답을 허용으로 해석하면 권한 UX가 보안 장치가 아니라 장식이 되니까요.
 
-ACP v2에는 elicitation/create도 있어요. Agent가 Client를 통해 사용자에게 구조화된 정보를 요청하는 기능이에요. form mode는 민감하지 않은 정보를 제한된 JSON Schema로 수집해요. URL mode는 OAuth처럼 민감하거나 외부 hosted workflow가 필요한 작업을 out-of-band로 처리해요.
+ACP v2에는 elicitation/create도 있어요. Agent가 Client를 통해 사용자에게 구조화된 정보를 요청하는 기능이에요. form mode는 민감하지 않은 정보를 제한된 JSON Schema로 수집해요. slack 모듈에서 지금 버튼과 모달로 흩어져 있는 되묻기가 form mode에 대응하죠. URL mode는 OAuth처럼 민감하거나 외부 hosted workflow가 필요한 작업을 out-of-band로 처리하니, CLI 인증 갱신처럼 토큰이 오가는 흐름은 이쪽으로 밀어야 해요.
 
 form mode로 password, API key, access token, refresh token, private key 같은 credential을 요청하면 안 돼요. URL mode에서도 Agent가 URL로 얻은 token을 ACP나 모델 context로 되돌려 보내면 안 돼요.
 
@@ -230,7 +230,7 @@ form mode로 password, API key, access token, refresh token, private key 같은 
 
 ACP를 바로 표준 경계로 삼고 싶어도 v2는 조심해서 봐야 해요. v2 protocol surface는 전체가 draft로 표시돼 있어요. version negotiation과 feature flag 뒤에 두라고 설명하죠.
 
-안정 baseline은 schema/v2/schema.json이에요. 불안정한 draft feature는 schema/v2/schema.unstable.json에 layered돼요. protocolVersion: 2를 협상해도 unstable feature가 자동으로 켜지지는 않아요.
+안정 baseline은 schema/v2/schema.json이고, 불안정한 draft feature는 그 위에 schema/v2/schema.unstable.json으로 layered되는 구조예요. protocolVersion: 2를 협상해도 unstable feature가 자동으로 켜지지는 않아요.
 
 현재 stable ACP protocol version은 1이에요. v2 기능을 전제로 Client를 만들면 기존 Agent와 연결되지 않을 수 있어요. v1만 보는 Client는 v2의 prompt lifecycle과 upsert update를 제대로 활용하지 못해요. state_update와 새 tool call streaming도 마찬가지예요.
 
@@ -250,7 +250,7 @@ ACP를 바로 표준 경계로 삼고 싶어도 v2는 조심해서 봐야 해요
 
 TypeScript·NestJS 기반 Slack 멀티 에이전트 시스템에 ACP를 대입하면 model-router와 ai-cli-env가 먼저 맞닿아요. 지금 model-router는 AgentType에 따라 provider를 골라요. ai-cli-env는 CLI 실행 환경을 안전하게 구성하는 역할에 가까워요.
 
-ACP를 도입하면 provider의 추상화 단위를 “벤더별 CLI spawn”에서 “ACP Agent connection”으로 올릴 수 있어요. CodexCliProvider나 ClaudeCliProvider는 stdout parser 대신 initialize/session/prompt/update/cancel을 다루는 adapter가 돼요.
+문서 기준으로는 ACP를 도입하면 provider의 추상화 단위를 “벤더별 CLI spawn”에서 “ACP Agent connection”으로 올릴 수 있어요. 다만 아직 붙여본 적이 없어 실제로 얼마나 얇아지는지는 확인하지 못했어요. CodexCliProvider나 ClaudeCliProvider는 stdout parser 대신 initialize/session/prompt/update/cancel을 다루는 adapter가 돼요.
 
 ### 실행 기록을 lifecycle 단위로 채운다
 
@@ -260,7 +260,7 @@ agent-run도 직접 영향을 받아요. 현재 agent-run이 begin → run → f
 
 ### 세션과 권한은 저장소가 아니라 UX 문제다
 
-local-sessions도 중요해요. ACP는 session/new, session/resume, session/list, session/close 같은 session lifecycle을 전제로 해요. Slack thread와 ACP session을 연결하는 방식부터 정해야 해요. 한 Slack 사용자에게 여러 concurrent session을 허용할지, session replay를 어디까지 저장할지도 결정해야 하고요.
+local-sessions가 중요해지는 지점은, ACP가 session/new, session/resume, session/list, session/close 같은 session lifecycle을 아예 전제로 깔고 들어간다는 데 있어요. Slack thread와 ACP session을 연결하는 방식부터 정해야 해요. 한 Slack 사용자에게 여러 concurrent session을 허용할지, session replay를 어디까지 저장할지도 결정해야 하고요.
 
 이는 단순한 저장소 문제가 아니라 UX 문제예요. 사용자가 /review-pr을 다시 눌렀을 때 이전 맥락을 이을지 새 세션으로 격리할지에 따라 결과가 달라지거든요.
 
@@ -272,7 +272,7 @@ slack 모듈에는 권한 UX가 연결돼요. session/request_permission은 Slac
 
 agent/vacation처럼 자연어 파라미터 추출만 필요한 에이전트는 ACP의 장점이 작아요. 한 번에 모두 옮기기보다 도구 호출과 권한 요청이 많은 코딩 에이전트부터 실험하는 편이 맞아요.
 
-## 도입 전에 확인할 것
+## 붙이기 전에 initialize부터 캡처해야 한다
 
 먼저 실제 지원 현황부터 확인해야 해요. 공식 문서와 레포는 프로토콜의 형태를 보여줄 뿐이에요. 사용하는 Agent CLI가 지원하는 protocol version과 capability는 별개거든요. initialize에서 v1/v2를 어떻게 협상하는지 직접 캡처해야 해요. session/prompt 뒤에 state_update가 규격대로 오는지, tool call update가 얼마나 상세한지도 봐야 해요.
 
@@ -280,7 +280,7 @@ Slack Client의 최소 구현 범위도 정해야 해요. 처음부터 완전한
 
 이 실험에서 stdout parser보다 관측성이 좋아진다는 증거가 나오면, 그때 model-router의 provider 경계를 ACP 중심으로 다시 설계할 수 있어요.
 
-ACP의 가치는 프로토콜 자체보다 경계를 명확히 만드는 데 있어요. 여러 Coding Agent를 같은 UX에서 운영하며 실행 상태와 권한, 취소, audit log를 일관되게 다룰 때 유용해요. 다만 v2의 draft 상태와 Agent별 지원 차이는 고려해야 해요. 전면 전환보다는 도구 호출과 권한 요청이 많은 에이전트에서 작은 spike로 검증하는 편이 맞아요.
+ACP의 가치는 프로토콜 자체보다 경계를 명확히 만드는 데 있어요. 그래서 저는 ACP를 “도입할지 말지”의 문제로 두지 않기로 했어요. stdout parser를 그대로 두더라도 실행 상태와 권한, 취소를 별도 사건으로 기록하는 일은 지금 당장 할 수 있고, 그 기록이 쌓이면 ACP로 갈아탈지는 저절로 판가름 나거든요. 프로토콜을 먼저 고르는 대신 경계를 먼저 그어두는 쪽이 되돌리기도 쉽고요.
 
 ## 참고한 공식 출처
 

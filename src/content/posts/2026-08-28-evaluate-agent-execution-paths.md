@@ -5,15 +5,13 @@ pubDatetime: 2026-08-28T19:07:00+09:00
 category: backend
 ---
 
-배포 전 테스트를 모두 통과했는데도 운영에서 어딘가 이상하다고 느끼는 순간이 있어요. `/review-pr` 명령은 여전히 “리뷰 결과”를 돌려주지만, GitHub PR detail만 읽고 diff는 보지 않았을 수 있거든요. 근거가 이미 충분한데 모델을 한 번 더 호출하거나, 실패하면 graceful fallback으로 가야 할 경로가 예외로 끝날 수도 있어요.
+배포 전 테스트를 모두 통과했는데도 운영에서 어딘가 이상하다고 느끼는 순간이 있어요. `/review-pr` 명령은 여전히 “리뷰 결과”를 돌려주지만, GitHub PR detail만 읽고 diff는 보지 않았을 수 있거든요. 근거가 이미 충분한데 모델을 한 번 더 호출하거나, 실패하면 graceful fallback으로 가야 할 경로가 예외로 끝날 수도 있어요. 기존 API 테스트로는 이런 변화를 좀처럼 잡아내기 어려워요. 컨트롤러가 200을 반환했는지, DTO 모양이 맞는지, 최종 문자열에 특정 문구가 들어 있는지는 검사할 수 있어요. 하지만 에이전트 시스템에서는 도구 선택과 호출 순서도 품질의 일부고, 실패했을 때 다른 경로로 빠졌는지 근거를 남겼는지도 살펴야 하니까요.
 
-기존 API 테스트로는 이런 변화를 좀처럼 잡아내기 어려워요. 컨트롤러가 200을 반환했는지, DTO 모양이 맞는지, 최종 문자열에 특정 문구가 들어 있는지는 검사할 수 있어요. 하지만 에이전트 시스템에서는 도구 선택과 호출 순서도 품질의 일부고, 실패했을 때 다른 경로로 빠졌는지 근거를 남겼는지도 살펴야 하니까요.
-
-그래서 trajectory-based agent evaluation이 필요해요. 에이전트가 내놓은 답변만 보지 않고, 실행 도중 지나간 경로 전체를 평가하는 방식이에요. Slack 명령과 GitHub 조회, 모델 라우팅, Queue/Worker, retry-run 구조가 이미 있다면 더 중요한데, 기존 에이전트의 행동이 조용히 달라지는 순간을 CI에서 잡아야 하거든요.
+그래서 trajectory-based agent evaluation이 필요해요. 에이전트가 내놓은 답변만 보지 않고, 실행 도중 지나간 경로 전체를 평가하는 방식이에요. 여기까지는 AgentEvals와 OpenAI Evals 문서를 읽고 정리한 것이고 제 시스템에 붙여 돌려본 단계는 아니라는 걸 먼저 밝혀 둘게요. Slack 명령과 GitHub 조회, 모델 라우팅, Queue/Worker, retry-run 구조가 이미 있다면 더 중요한데, 기존 에이전트의 행동이 조용히 달라지는 순간을 CI에서 잡아야 하거든요.
 
 ## 최종 응답 테스트로는 보이지 않는 회귀
 
-LLM 애플리케이션을 처음 만들 때는 대개 출력부터 평가해요. 질문을 넣고 답변이 맞는지 확인하는 식이죠. eval은 전통적인 소프트웨어 테스트와 비슷해요. LLM 애플리케이션을 production으로 가져가려면 여기서 출발하게 되고요. 모델을 올리거나 프롬프트를 바꿀 때, 여러 모델을 견줄 때, prompt regression을 막을 때 모두 eval이 필요해요.
+출력만 보는 평가는 틀린 게 아니라 범위가 좁을 뿐이에요. LLM 애플리케이션을 처음 만들 때는 대개 출력부터 평가하고, 질문을 넣고 답변이 맞는지 확인하는 식이죠. eval은 전통적인 소프트웨어 테스트와 비슷해요. LLM 애플리케이션을 production으로 가져가려면 여기서 출발하게 되고요. 모델을 올리거나 프롬프트를 바꿀 때, 여러 모델을 견줄 때, prompt regression을 막을 때 모두 eval이 필요해요.
 
 이 관점은 지금도 중요해요. 단순 분류나 요약, 포맷 변환처럼 “입력 → 출력” 구조가 분명한 작업은 최종 출력만 평가해도 많은 문제를 잡을 수 있거든요. OpenAI 문서의 IT ticket categorization 예시는 ticket text를 Hardware, Software, Other 중 하나로 분류해요. string_check grader로 정답 라벨과 정확히 같은지 비교하고요.
 
@@ -55,7 +53,7 @@ code review agent라면 최종 답변이 “전반적으로 괜찮다”로 끝�
 
 trajectory는 에이전트가 실행되는 동안 거친 메시지와 도구 호출의 sequence예요. agent trajectory는 OpenAI-style messages의 list로 나타낼 수 있어요.
 
-user message와 assistant message, assistant의 tool_calls가 여기에 들어가요. tool role의 tool result와 마지막 assistant response도 포함되고요.
+이 목록이 중요한 건 평가 대상이 답변 한 줄에서 실행 기록 전체로 넓어진다는 뜻이기 때문이에요. user message와 assistant message, assistant의 tool_calls가 여기에 들어가고, tool role의 tool result와 마지막 assistant response도 포함되거든요.
 
 가장 작은 trajectory는 이렇게 생겼어요. 사용자가 “SF 날씨”를 물으면 assistant가 get_weather tool을 호출하고, tool result를 받은 다음 최종 응답을 만들어요.
 
@@ -152,32 +150,34 @@ Slack 기반 멀티 에이전트 시스템에는 평가 단위로 삼을 만한 
 
 github는 assigned issue, PR detail, diff 같은 외부 근거 조회를 맡고, slack은 slash command ack와 최종 응답 포맷을 담당해요. 이 네 지점만 이어도 “사용자 입력 → 근거 조회 → 모델 호출 → Slack 응답”의 최소 trajectory가 나와요.
 
-### 슬래시 하나가 지나는 경로
+### 슬래시 세 개는 서로 다른 경로를 밟는다
 
 `/review-pr`는 agent/code-reviewer, github, model-router, pr-review-loop, slack에 걸쳐 있어요. 최소 기준 경로에는 PR detail 조회와 diff 조회, code-reviewer provider 호출과 Slack formatter 응답이 들어가요. 여기서 superset match를 쓰면 추가 메타데이터 조회는 허용하면서 diff 조회 누락은 막을 수 있어요.
 
-`/today`는 agent/pm, github, daily-plan, model-router, slack과 맞닿아 있어요. 사용자의 자연어 입력을 받고 GitHub assigned task를 조회해요. 전일 plan이나 기존 daily plan context를 합친 뒤 PM agent provider를 호출하고요.
+`/today`가 부르는 모듈은 조금 다른데, agent/pm과 daily-plan이 들어오고 pr-review-loop가 빠져요. 사용자의 자연어 입력을 받고 GitHub assigned task를 조회해요. 전일 plan이나 기존 daily plan context를 합친 뒤 PM agent provider를 호출하고요.
 
 마지막에 Slack 응답으로 정리하는 경로가 기준이 되죠. GitHub가 실패해도 사용자 입력만으로 graceful fallback이 작동해야 한다면 실패 trajectory도 별도 fixture로 둬야 하고요.
 
-`/worklog`는 agent/work-reviewer, agent-run, EvidenceRecord, model-router, slack을 살펴요. 업무 로그 초안은 근거가 빈약하면 그럴듯한 문장만 남기 쉬우니까요. “정량 근거가 EvidenceRecord에 남았는가”, “근거 누락 시 사용자에게 한계를 드러냈는가”, “불필요한 모델 재호출이 없었는가”가 출력 문장보다 먼저 볼 지표가 되죠.
+`/worklog`에서는 EvidenceRecord가 경로의 한가운데로 올라와요. 업무 로그 초안은 근거가 빈약하면 그럴듯한 문장만 남기 쉬우니까요. “정량 근거가 EvidenceRecord에 남았는가”, “근거 누락 시 사용자에게 한계를 드러냈는가”, “불필요한 모델 재호출이 없었는가”가 출력 문장보다 먼저 볼 지표가 되죠.
+
+### 어느 명령부터 붙일까
 
 처음부터 모든 agent에 eval을 붙일 필요는 없어요. Slack slash command처럼 entrypoint가 고정되고 외부 도구 호출 순서가 비교적 명확하며 실패 경로가 중요한 명령부터 시작하는 편이 좋아요. `/review-pr`, `/today`, `/worklog`가 좋은 첫 후보예요.
 
 ## 언제 쓰면 안 되는가
 
-trajectory eval이 만능은 아니에요. agent workflow가 자주 바뀌는 초기 설계 단계에서는 strict fixture가 오히려 발목을 잡을 수 있어요. 이때는 최종 출력 평가나 LLM judge 중심의 느슨한 평가가 더 나아요. 경로가 제품 요구사항으로 굳기 전에 순서를 고정하면 리팩터링 비용만 커지니까요.
+trajectory eval이 만능은 아니에요. agent workflow가 자주 바뀌는 초기 설계 단계에서는 strict fixture가 오히려 발목을 잡을 수 있는데, 제 쪽에도 경로가 아직 굳지 않은 명령이 섞여 있어서 입구와 호출 순서가 안정된 `/review-pr`부터만 후보로 잡았어요. 이때는 최종 출력 평가나 LLM judge 중심의 느슨한 평가가 더 나아요. 경로가 제품 요구사항으로 굳기 전에 순서를 고정하면 리팩터링 비용만 커지니까요.
 
 단순 completion 작업에는 trajectory eval이 과해요. 입력 문장을 특정 tone으로 바꾸는 작업처럼 tool call이 없고 중간 의사결정도 거의 없다면 output evaluator가 알맞죠. OpenEvals가 제공하는 conciseness, correctness 같은 LLM-as-judge나 exact match, embedding similarity 계열이 더 단순해요.
 
 관측 데이터가 없으면 시작할 수도 없어요. trajectory-based evaluation을 하려면 실행 중간 단계가 기록돼야 해요. assistant message와 tool call, tool result, final response가 남지 않으면 나중에 fixture로 만들 수 없거든요.
 
-evaluation보다 observability가 먼저인 이유고, AgentRunService.execute와 EvidenceRecord 같은 기록 구조가 있는 시스템에 이 접근이 특히 잘 맞는 이유도 여기에 있어요.
+evaluation보다 observability가 먼저인 이유예요. AgentRunService.execute와 EvidenceRecord가 실행과 근거를 남기긴 하지만, 그 기록이 tool call과 tool result까지 messages 형태로 담고 있는지는 확인해 보지 않았고, 확인 전까지는 이 접근이 잘 맞는다고 말하기가 일러요.
 
 ## 운영 trace에서 CI fixture로
 
-구현은 AgentEvals의 TypeScript match evaluator를 현재 테스트 러너에 얹는 데서 시작해요. TypeScript에서는 `npm install agentevals @langchain/core`로 설치하고 Vitest·Jest와 통합해요. 이미 TypeScript와 NestJS 테스트 문화가 있다면 별도 플랫폼보다 fixture 파일과 evaluator spec부터 만드는 편이 작아요.
+구현은 AgentEvals의 TypeScript match evaluator를 현재 테스트 러너에 얹는 데서 시작해요. TypeScript에서는 `npm install agentevals @langchain/core`로 설치하고 Vitest·Jest와 통합한다고 안내돼 있는데, 제 레포에 실제로 얹어 보지는 않아서 NestJS 테스트 설정과 부딪히는 지점이 있는지는 아직 몰라요. 이미 TypeScript와 NestJS 테스트 문화가 있다면 별도 플랫폼보다 fixture 파일과 evaluator spec부터 만드는 편이 작아요.
 
-각 Slack 명령의 “필수 trajectory step”도 정해야 해요. `/review-pr`, `/today`, `/worklog`마다 정상 경로 1개와 실패 경로 1개를 골라요. 정상 경로에서는 superset match로 필수 tool call을 보장하고, 실패 경로에서는 fallback evidence와 Slack 응답을 검사해요. 그다음 LLM judge를 붙여 “경로가 과하게 돌아가지 않았는가”를 평가하면 돼요.
+각 Slack 명령의 “필수 trajectory step”도 정해야 해요. `/review-pr`, `/today`, `/worklog`마다 정상 경로 1개와 실패 경로 1개를 골라요. 정상 경로에서는 superset match로 필수 tool call을 보장하고, 실패 경로에서는 fallback evidence와 Slack 응답을 검사해요. 그다음 LLM judge를 붙여 “경로가 과하게 돌아가지 않았는가”까지 볼 수 있을 텐데, 여기부터는 문서를 읽고 세운 계획이라 실제로 돌려 보기 전에는 비용도 판정 흔들림도 얼마나 될지 모르겠어요.
 
-에이전트 품질은 최종 답변뿐 아니라 실행 경로에도 담겨 있어요. 시작점은 거창한 평가 플랫폼이 아니라, 운영 trace를 fixture로 바꿔 tool call 순서와 필수 근거 조회를 검사하는 거예요. fallback과 불필요한 호출도 TypeScript evaluator와 CI에서 확인하면 돼요.
+에이전트 품질은 최종 답변뿐 아니라 실행 경로에도 담겨 있어요. 그런데 경로를 fixture로 굳히는 순간 그 경로 자체가 바꾸기 어려워지니까, 무엇을 계약으로 삼고 무엇을 열어 둘지는 평가를 붙이기 전에 정해 두는 편이 나아요. 저는 `/review-pr`의 diff 조회 하나만 먼저 고정해 두고, 나머지는 실제로 깨지는 걸 본 다음에 늘릴 생각이에요.
