@@ -4,6 +4,7 @@
 사용법:
   python3 scripts/rhythm-check.py metrics <파일...>          지표만 출력
   python3 scripts/rhythm-check.py verify <ref> <파일...>      ref(git 리비전) 대비 사실 보존 검사
+  python3 scripts/rhythm-check.py echo <파일...>             앞말에 이름표만 다시 붙인 문장 찾기
 
 사실 보존 검사는 문체를 고쳐도 변하면 안 되는 것만 본다.
 frontmatter, 헤딩 목록, 코드블록, 숫자, 영문 식별자, URL.
@@ -39,6 +40,37 @@ def sentences(body):
     prose = re.sub(r'(?m)^#.*$', '', prose)
     prose = re.sub(r'(?m)^-.*$', '', prose)
     return [s.strip() for s in re.split(r'(?<=\.)\s+', prose) if len(s.strip()) > 5]
+
+
+# 앞말에 이름표만 다시 붙이는 문장. 새 사실을 더하지 않아 지워도 뜻이 그대로다.
+#
+# 정당한 설명과 무엇으로 가르는가 — 설명 대상이 백틱·따옴표로 감싼 기호이거나 처음 꺼낸
+# 용어면 새 정보이므로 세지 않는다. 지시어로 앞 문장을 되받는 것만 남긴다.
+# 넓게 잡았을 때는 발행본 11편에서 7건 중 5건이 오탐이었다(`rate: 1`의 뜻 풀이,
+# 용어 정의 등 채점표 B-4가 오히려 요구하는 문장들). 아래 조건으로 좁히니 1건만 남았고
+# 그 1건이 실제 메아리였다.
+#
+# 어휘 겹침으로는 잡히지 않는다. 같은 말을 다른 낱말로 하기 때문이다(실측 0건).
+ECHO_PATTERNS = [
+    (r'(이런|그런|이러한|그러한)\s*(뜻|의미|말|얘기|이야기)(이에요|예요|이죠|죠|입니다|이다)', '이런 뜻이에요'),
+    (r'^(이게|그게|이것이|그것이)\s+[^`"\u201c]{0,16}(이에요|예요|입니다|이죠|죠)\s*$', '이게 ~예요'),
+    (r'(인|한|된)\s*셈(이에요|예요|이죠|죠|입니다|이다)\s*$', '~인 셈이죠'),
+    (r'^(즉|다시 말해|바꿔 말하면|요컨대)[ ,]', '즉/다시 말해'),
+]
+ECHO_DEFINING = re.compile(r'[`"\u201c\u201d\']|이 글에서|라고 부르|라고 해요|말하자면')
+
+
+def echoes(path):
+    body = split_parts(open(path, encoding='utf-8').read())[1]
+    found = []
+    for sentence in sentences(body):
+        if ECHO_DEFINING.search(sentence):
+            continue
+        for pattern, name in ECHO_PATTERNS:
+            if re.search(pattern, sentence):
+                found.append((name, sentence))
+                break
+    return found
 
 
 # 어미 계열. 있죠·하죠·되죠는 사람 귀에 같은 -죠로 들리는데,
@@ -153,6 +185,20 @@ def main():
             for n in notes:
                 print(f'    (확인) {n}')
         return 1 if failed else 0
+    if mode == 'echo':
+        hit = False
+        for path in sys.argv[2:]:
+            found = echoes(path)
+            name = path.split('/')[-1]
+            if not found:
+                continue
+            hit = True
+            print(f'[메아리] {name} ({len(found)}건)')
+            for kind, sentence in found:
+                print(f'    [{kind}] {sentence[:76]}')
+        if not hit:
+            print('[없음] 앞말을 되풀이하는 문장이 없다')
+        return 1 if hit else 0
     print(__doc__)
     return 2
 
