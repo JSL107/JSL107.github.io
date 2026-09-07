@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">하네스, 그래프, 루프의 관계</title>
+  <desc id="desc">하네스가 실행 환경을 제공하고 그 안에서 그래프가 작업 흐름을 연결하며, 검증 실패 시 루프가 수정 단계로 되돌아가는 구조를 보여주는 그림</desc>
+  <defs>
+    <linearGradient id="harness" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef2ff"/>
+      <stop offset="1" stop-color="#f5f3ff"/>
+    </linearGradient>
+    <linearGradient id="graph" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#fafafa"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#1f2937" flood-opacity=".10"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0 10 5 0 10Z" fill="#4f46e5"/>
+    </marker>
+    <marker id="loop-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0 10 5 0 10Z" fill="#ea580c"/>
+    </marker>
+    <style>
+      .sans { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+      .title { font-size: 34px; font-weight: 700; fill: #111827; }
+      .label { font-size: 22px; font-weight: 700; fill: #111827; }
+      .body { font-size: 18px; fill: #4b5563; }
+      .small { font-size: 16px; fill: #6b7280; }
+      .tag { font-size: 17px; font-weight: 700; letter-spacing: .04em; }
+      @media (prefers-color-scheme: dark) {
+        .title, .label { fill: #f9fafb; }
+        .body { fill: #d1d5db; }
+        .small { fill: #9ca3af; }
+        .graph { fill: #111827; stroke: #374151; }
+        .node { fill: #1f2937; stroke: #6366f1; }
+        .harness-bg { fill: #1e1b4b; stroke: #6366f1; }
+      }
+    </style>
+  </defs>
+
+  <rect width="1200" height="760" rx="28" fill="#ffffff"/>
+  <text x="70" y="75" class="sans title">세 가지가 하는 일은 다르다</text>
+  <text x="70" y="112" class="sans body">하네스 안에서 그래프가 흐르고, 필요한 구간에서 루프가 되돌아갑니다.</text>
+
+  <rect x="58" y="145" width="1084" height="525" rx="28" fill="url(#harness)" stroke="#a5b4fc" stroke-width="2" class="harness-bg"/>
+  <rect x="88" y="175" width="260" height="82" rx="18" fill="#4f46e5"/>
+  <text x="118" y="210" class="sans tag" fill="#ffffff">HARNESS</text>
+  <text x="118" y="239" class="sans" font-size="18" fill="#e0e7ff">환경 · 도구 · 권한 · 상태</text>
+
+  <rect x="88" y="292" width="1024" height="330" rx="22" fill="url(#graph)" stroke="#c7d2fe" stroke-width="2" class="graph" filter="url(#shadow)"/>
+  <text x="120" y="335" class="sans label">GRAPH · 어디로 보낼까?</text>
+  <text x="120" y="365" class="sans small">노드와 edge가 작업의 순서, 분기, 합류를 정의합니다.</text>
+
+  <rect x="125" y="425" width="150" height="70" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="2" class="node"/>
+  <text x="200" y="467" text-anchor="middle" class="sans label" font-size="20">기획</text>
+  <path d="M275 460 H332" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="340" y="425" width="160" height="70" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="2" class="node"/>
+  <text x="420" y="467" text-anchor="middle" class="sans label" font-size="20">조사자들</text>
+  <path d="M500 460 H557" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="565" y="425" width="150" height="70" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="2" class="node"/>
+  <text x="640" y="467" text-anchor="middle" class="sans label" font-size="20">통합</text>
+  <path d="M715 460 H772" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="780" y="425" width="150" height="70" rx="14" fill="#ecfdf5" stroke="#34d399" stroke-width="2" class="node"/>
+  <text x="855" y="467" text-anchor="middle" class="sans label" font-size="20">검사</text>
+  <path d="M930 460 H974" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow)"/>
+  <circle cx="1010" cy="460" r="28" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
+  <path d="m996 460 10 10 18-22" fill="none" stroke="#16a34a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M855 497 C855 570 640 590 565 505" fill="none" stroke="#ea580c" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#loop-arrow)"/>
+  <rect x="670" y="548" width="205" height="42" rx="21" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="772" y="575" text-anchor="middle" class="sans" font-size="17" font-weight="700" fill="#c2410c">실패 → 수정 → 재검사</text>
+
+  <text x="88" y="710" class="sans small">Loop = 몇 번 되돌리고 언제 멈출까?</text>
+  <text x="1112" y="710" text-anchor="end" class="sans small">세 층은 순서가 아니라 조합입니다.</text>
+</svg>
