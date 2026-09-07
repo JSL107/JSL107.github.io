@@ -1,25 +1,29 @@
 ---
-title: "완료 이벤트를 수렴하는 에이전트 실행 구조"
-description: "장기 모델 실행을 worker의 대기 작업에서 분리하고, webhook 완료 이벤트를 내부 상태로 안전하게 수렴하는 구조를 살펴본다."
+title: "worker가 모델을 기다리는 동안 책임이 흐려져요"
+description: "Slack 봇은 3초 안에 답해야 하는데 모델은 몇 분을 씁니다. 그 사이를 worker가 붙잡고 있으면 타임아웃·취소·중복이 한 실행에 뒤엉켜요. 완료를 이벤트로 받아 내부 상태에 한 번만 모으는 구조를 정리했습니다."
 pubDatetime: 2026-09-06T19:05:00+09:00
 category: backend
 ---
 
-Slack 명령은 빨리 끝나야 해도 에이전트의 일까지 금세 끝나는 건 아니에요. 사용자가 /review-pr 같은 명령을 보내면 서버는 곧바로 ack를 돌려주고, 실제 리뷰 생성은 뒤에서 이어가요. BullMQ worker가 모델 호출을 시작하면 수십 초, 길게는 몇 분 동안 프로세스를 붙잡아요. 이때 worker timeout, 모델 실행 실패, 네트워크 단절, 사용자 취소가 한데 섞이거든요.
+Slack 명령은 빨리 끝나야 하는데 에이전트의 일까지 금세 끝나지는 않아요. PR 리뷰를 만들라는 명령이 들어오면 서버는 곧바로 접수 응답을 돌려주고 실제 리뷰 생성은 뒤에서 이어가는데, 작업 큐(BullMQ)의 worker가 모델 호출을 시작하면 수십 초에서 길게는 몇 분 동안 프로세스를 붙잡거든요. 문제는 그동안 worker timeout과 모델 실행 실패, 네트워크 단절, 사용자 취소가 한데 섞인다는 점이에요.
 
-Background Responses와 webhook completion pattern은 이 경계를 새로 그어요. worker는 모델의 답을 기다리는 곳이 아니라 모델 실행을 등록하고 완료 이벤트를 모으는 곳이 돼요. 장기 실행은 OpenAI Responses API의 background job이 맡고, 시스템은 response.id와 webhook delivery, retrieve, cancel, 내부 감사로그를 관리해요. 비동기 호출 자체보다 완료 이벤트를 내부 상태에 정확히 반영하는 일이 핵심이에요.
+그럼 worker는 무엇을 책임지는 걸까요? 모델이 끝났는지 확인하는 일일까요, 아니면 결과를 한 번만 저장하는 일일까요. 둘을 같은 실행에 묶어 두면 어느 쪽이 실패했는지 나중에 가릴 수 없어요.
+
+**Background Responses**는 모델 실행을 등록만 하고 빠져나오는 방식이고, **webhook completion pattern**은 그 실행이 끝났다는 사실을 provider가 알려주는 방식이에요. 둘을 합치면 worker는 답을 기다리는 곳이 아니라 실행을 등록하고 완료 이벤트를 모으는 곳이 돼요. 비동기 호출 자체보다 **완료 이벤트를 내부 상태에 정확히 반영하는 일**이 어려운 부분이고, 이 글은 거기에 초점을 둡니다.
+
+**아래는 OpenAI 공식 문서와 예제를 2026년 9월 6일에 읽고 정리한 것이고, 붙여서 돌려본 결과가 아니에요.** 마지막 절에 적었듯 지금 제 시스템은 이 패턴의 전제부터 충족하지 못합니다.
 
 ## worker가 오래 기다릴 때 흐려지는 책임
 
-Slack 기반 에이전트에서 첫 번째 병목은 대개 HTTP 생명주기예요. Slack은 slash command나 interaction에 빠른 ack를 기대하니까 사용자에게는 "처리 중" 메시지를 먼저 보여줘야 해요. slack 모듈이 요청을 받고 agent-run이 실행 이력을 만든 뒤, BullMQ worker가 model-router를 통해 모델을 호출하는 구조가 자연스러워요.
+Slack 기반 에이전트에서 첫 번째 병목은 대개 HTTP 생명주기예요. Slack은 slash command나 interaction에 빠른 접수 응답을 기대하니 사용자에게 "처리 중" 메시지를 먼저 보여줘야 하고, 그래서 Slack 진입점이 요청을 받아 실행 기록을 만든 뒤 작업 큐의 worker가 모델 라우터를 통해 모델을 호출하는 구조가 자연스러워요.
 
-모델 실행이 길어질수록 worker는 사실상 원격 job의 생명주기를 대신 맡아요. worker가 다룰 수 있는 건 로컬 프로세스와 타임아웃, 재시도 횟수예요. 실제로는 provider가 요청을 완료했는지, 결과를 한 번만 저장했는지 확인해야 해요. 이미 취소된 run에 성공 메시지를 보내지 않았는지도 살펴야 하는데, 성격이 다른 관심사가 한 실행에 묶여 있어요.
+모델 실행이 길어질수록 worker는 사실상 원격 job의 생명주기를 대신 맡아요. 그런데 worker가 실제로 다룰 수 있는 건 로컬 프로세스와 타임아웃, 재시도 횟수뿐이에요. 정작 확인해야 하는 것은 provider가 요청을 완료했는지, 결과를 한 번만 저장했는지, 이미 취소된 실행에 성공 메시지를 보내지 않았는지인데, 성격이 다른 관심사가 한 실행에 묶여 있는 셈이죠.
 
-Background mode는 이 구조를 provider run 단위로 나눠요. Responses API 요청에 background: true를 주면 호출자는 Response 객체와 상태를 받은 뒤 바로 빠져나와요. 상태가 queued 또는 in_progress인 동안에는 retrieve로 확인하거나 webhook을 기다려요. 내부 AgentRun도 더는 worker의 함수 호출과 1:1로 묶이지 않아요. AgentRun 하나가 외부 response.id 하나를 참조하고, 완료 이벤트가 들어오면 결과를 저장하는 구조가 되는 거죠.
+Background mode는 이 구조를 provider run 단위로 나눠요. Responses API 요청에 `background: true`를 주면 호출자는 Response 객체와 상태를 받은 뒤 바로 빠져나오고, 상태가 `queued`나 `in_progress`인 동안에는 retrieve로 확인하거나 webhook을 기다려요. 내부 실행 기록도 더는 worker의 함수 호출과 1:1로 묶이지 않아요. 실행 기록 하나가 외부 `response.id` 하나를 참조하고, 완료 이벤트가 들어오면 결과를 저장하는 구조가 되는 거죠.
 
 ## 긴 요청을 짧은 등록으로 바꾸기
 
-첫 단계에서는 Responses 생성 요청에 background: true를 넣어요. OpenAI 예시는 긴 소설 생성을 입력으로 들지만, 이 자리는 PR 리뷰나 업무 로그, daily plan처럼 reasoning 시간이 길어질 수 있는 model-router 호출에 해당해요.
+첫 단계에서는 Responses 생성 요청에 `background: true`를 넣어요. 공식 예시는 긴 소설 생성을 입력으로 들지만, 이 자리는 PR 리뷰나 업무 로그, 그날의 계획처럼 reasoning 시간이 길어질 수 있는 모델 호출에 해당해요.
 
 ```javascript
 import OpenAI from "openai";
@@ -35,9 +39,9 @@ const resp = await client.responses.create({
 console.log(resp.status);
 ```
 
-중요한 건 입력 문장이 아니라 background: true예요. Slack 에이전트의 input에는 PR diff, GitHub task 목록, 전일 계획, 사용자 요청 같은 prompt 재료가 들어가요. worker는 응답 본문을 기다리지 않고 resp.id와 초기 resp.status를 agent-run에 남긴 뒤 종료해도 돼요.
+중요한 건 입력 문장이 아니라 `background: true` 한 줄이에요. Slack 에이전트라면 input 자리에 PR diff, GitHub task 목록, 전일 계획, 사용자 요청 같은 prompt 재료가 들어가고, worker는 응답 본문을 기다리지 않고 `resp.id`와 초기 `resp.status`를 실행 기록에 남긴 뒤 종료해도 돼요.
 
-상태는 retrieve로 확인해요. queued와 in_progress는 아직 끝나지 않은 상태이고, 나머지는 내부 terminal state로 매핑할 후보가 돼요. OpenAI status를 화면에 그대로 보여주기보다 내부 AgentRun에 자체 상태를 두는 편이 안전해요. RUNNING, COMPLETED, FAILED, CANCELLED, INCOMPLETE로 나누고 provider status는 증거로 남겨요. Slack 메시지와 재시도, 감사로그가 내부 상태를 기준으로 움직여야 하니까요.
+상태는 retrieve로 확인해요. `queued`와 `in_progress`는 아직 끝나지 않은 상태이고 나머지는 내부 종료 상태로 매핑할 후보가 되는데, provider가 준 상태를 화면에 그대로 보여주기보다 내부에 자체 상태를 두는 편이 안전해요. RUNNING·COMPLETED·FAILED·CANCELLED·INCOMPLETE로 나누고 provider status는 증거로 남기는 식이죠. Slack 메시지와 재시도, 감사로그가 전부 내부 상태를 기준으로 움직여야 하니까요.
 
 ```bash
 curl https://api.openai.com/v1/responses/resp_123 \
@@ -45,11 +49,11 @@ curl https://api.openai.com/v1/responses/resp_123 \
 -H "Authorization: Bearer $OPENAI_API_KEY"
 ```
 
-polling은 구현하기 쉽지만 장기 실행 agent가 동시에 늘어나면 주기적인 retrieve가 불필요한 부하를 만들어요. 정상 경로에는 webhook completion을 두고, polling은 보정 장치나 복구 경로로 남기는 편이 더 잘 맞아요.
+polling은 구현하기 쉽지만 장기 실행 에이전트가 동시에 늘어나면 주기적인 retrieve가 불필요한 부하를 만들어요. 정상 경로에는 webhook completion을 두고 polling은 보정 장치나 복구 경로로 남기는 편이 더 잘 맞아요.
 
 ## webhook은 결과를 찾으라는 신호다
 
-OpenAI webhook의 payload에는 정보가 많지 않아요. response.completed 이벤트가 모델 출력 전체를 싣는 대신, 보통 data.id로 response id를 알려줘요. webhook delivery는 작고 빠르게 처리하고 실제 결과는 retrieve로 가져오는 구조예요.
+webhook payload에는 정보가 많지 않아요. `response.completed` 이벤트가 모델 출력 전체를 싣는 대신 보통 `data.id`로 response id만 알려주거든요. webhook은 결과를 배달하는 게 아니라 **결과를 찾으러 가라는 신호**이고, 실제 내용은 retrieve로 가져오는 구조인 셈이죠.
 
 ```plain text
 POST https://yourserver.com/webhook
@@ -70,25 +74,17 @@ webhook-signature: v1,K5oZfzN95Z9UVu1EsfQmfVNQhnkZ2pj9o9NDN/H/pI4=
 }
 ```
 
-webhook 모듈의 handler는 서명을 검증하고 webhook-id를 delivery idempotency key로 저장해요. 이어서 data.id를 기준으로 결과 hydrate job을 BullMQ에 넣고 2xx를 돌려줘요. 여기서 OpenAI retrieve와 DB 저장, Slack 응답 게시까지 처리하면 webhook endpoint가 다시 장기 작업을 떠안게 되니까요.
+그래서 수신부 handler가 할 일은 셋으로 좁혀져요. 서명을 검증하고, `webhook-id`를 delivery 중복 제거 키로 저장하고, `data.id`를 기준으로 결과를 가져올 job을 큐에 넣은 뒤 2xx를 돌려주는 거예요. 여기서 retrieve와 DB 저장, Slack 게시까지 처리하면 webhook endpoint가 다시 장기 작업을 떠안게 되니까요.
 
-OpenAI webhook은 Standard Webhooks 사양을 따르며, 핵심 헤더는 webhook-id, webhook-timestamp, webhook-signature예요. 공식 SDK에는 raw body와 headers를 받아 서명 검증과 JSON parse를 함께 처리하는 client.webhooks.unwrap(body, headers, options?) helper가 있어요. 서명 검증 대상은 파싱된 JSON 객체보다 전달된 본문 바이트열에 가까워서 raw body가 필요해요.
-
-NestJS에서는 body parser를 거친 객체만 handler에 넘기지 않도록 이 endpoint의 raw body를 보존해야 해요.
+OpenAI webhook은 Standard Webhooks 사양을 따르며 핵심 헤더는 `webhook-id`, `webhook-timestamp`, `webhook-signature`예요. 공식 SDK에는 raw body와 headers를 받아 서명 검증과 JSON parse를 함께 처리하는 `client.webhooks.unwrap(body, headers, options?)` helper가 있고요. 서명 검증 대상은 파싱된 JSON 객체가 아니라 전달된 본문 바이트열이라서, NestJS처럼 body parser가 앞에 붙는 프레임워크에서는 이 endpoint만 raw body를 보존해야 해요.
 
 ## at-least-once 이벤트에서는 중복을 먼저 설계해야 한다
 
-Webhook completion pattern은 이벤트 수신보다 같은 완료를 한 번만 반영하는 일이 더 까다로워요. OpenAI는 endpoint가 2xx를 반환하지 않거나 몇 초 안에 응답하지 않으면 재시도해요. 재시도는 exponential backoff로 이어지고 최대 72시간까지 계속될 수 있어요. 3xx redirect도 성공으로 처리하지 않아요.
+이 패턴에서 정말 까다로운 건 이벤트를 받는 일이 아니라 **같은 완료를 한 번만 반영하는 일**이에요. OpenAI는 endpoint가 2xx를 반환하지 않거나 몇 초 안에 응답하지 않으면 재시도하는데, 재시도는 exponential backoff로 이어지고 최대 72시간까지 계속될 수 있어요. 3xx redirect도 성공으로 처리하지 않고요. 그러니 handler는 느리거나 redirect 뒤에 숨어서는 안 되고, 실패를 애매하게 삼켜서도 안 돼요.
 
-webhook handler는 느리거나 redirect 뒤에 숨어서는 안 되고, 실패를 애매하게 삼켜서도 안 돼요.
+중복 제거 키는 두 겹으로 둬야 해요. 첫 번째는 delivery 단위로, 이미 처리한 `webhook-id`라면 같은 HTTP delivery를 다시 처리하지 않아요. 두 번째는 resource 단위로, `response_id`에 연결된 내부 실행이 이미 종료 상태라면 뒤늦게 온 이벤트로 Slack 게시나 근거 기록 저장을 반복하지 않아요. 이 두 겹이 없으면 같은 완료 이벤트 때문에 업무 로그나 PR 리뷰가 두 번 게시될 수 있거든요.
 
-idempotency key는 두 겹으로 둬야 해요. 첫 번째는 delivery 단위로, 이미 처리한 webhook-id라면 같은 HTTP delivery를 다시 처리하지 않아요. 두 번째는 resource 단위로, response_id에 연결된 내부 AgentRun이 이미 terminal 상태라면 뒤늦게 온 이벤트로 Slack 게시나 EvidenceRecord 저장을 반복하지 않아요.
-
-이 두 겹이 없으면 같은 완료 이벤트 때문에 업무 로그나 PR 리뷰가 두 번 게시될 수 있거든요.
-
-ordering도 기대하지 않는 편이 맞아요. 완료, 실패, 취소 계열 이벤트가 체감되는 순서는 네트워크와 재시도의 영향을 받아요. webhook event type은 명령이 아니라 provider 쪽에서 관측한 상태 변화로 받아야 해요. 내부 상태 전이는 현재 AgentRun 상태를 읽고 허용된 전이인지 확인한 뒤 수행해요.
-
-COMPLETED에서 COMPLETED로 가는 전이는 noop으로 두고, CANCELLED에서 COMPLETED로 갈 때는 결과를 저장하더라도 사용자 성공 알림은 막는 정책이 필요해요.
+순서도 기대하지 않는 편이 맞아요. 완료·실패·취소 계열 이벤트가 체감되는 순서는 네트워크와 재시도의 영향을 받으니, webhook event type은 명령이 아니라 provider 쪽에서 관측한 상태 변화로 받아야 해요. 내부 상태 전이는 현재 상태를 읽고 허용된 전이인지 확인한 뒤에 수행하고요. COMPLETED에서 COMPLETED로 가는 전이는 아무 일도 하지 않는 것으로 두고, CANCELLED에서 COMPLETED로 갈 때는 결과를 저장하더라도 사용자 성공 알림은 막는 정책이 필요해요.
 
 ## 취소에서는 사용자와의 약속이 우선이다
 
@@ -100,57 +96,57 @@ curl -X POST https://api.openai.com/v1/responses/resp_123/cancel \
 -H "Authorization: Bearer $OPENAI_API_KEY"
 ```
 
-애플리케이션의 취소 범위는 provider cancel보다 넓어요. 사용자가 Slack에서 요청을 취소하면 가능할 때 provider 실행도 멈춰야 해요. 늦게 성공 결과가 오더라도 사용자에게 성공처럼 게시하지 않겠다는 약속도 지켜야 해요. provider 취소와 completed webhook 사이에는 race가 생길 수 있으니까요. cancel 요청 직전에 모델 실행이 끝나고 completed 이벤트가 뒤늦게 도착할 수도 있어요.
+그런데 애플리케이션의 취소 범위는 provider cancel보다 넓어요. 사용자가 Slack에서 요청을 취소하면 가능할 때 provider 실행도 멈춰야 하고, 늦게 성공 결과가 오더라도 사용자에게 성공처럼 게시하지 않겠다는 약속까지 지켜야 하거든요. 취소 요청 직전에 모델 실행이 끝나 완료 이벤트가 뒤늦게 도착하는 경합이 실제로 생길 수 있어요.
 
-그래서 내부 상태가 우선이에요. 사용자 요청으로 AgentRun이 CANCELLED가 됐다면 이후 response.completed가 와도 Slack 성공 메시지로 이어지면 안 돼요. retrieve 결과를 감사 목적으로 저장할지, 폐기할지, "cancel 이후 도착한 provider terminal event"로 기록할지는 정책에 달렸어요. 사용자 관점의 terminal state와 provider 관점의 terminal state를 같은 것으로 보면 안 돼요.
+그래서 내부 상태가 우선이에요. 사용자 요청으로 실행이 CANCELLED가 됐다면 이후 `response.completed`가 와도 Slack 성공 메시지로 이어지면 안 돼요. retrieve 결과를 감사 목적으로 저장할지, 폐기할지, "취소 이후 도착한 provider 종료 이벤트"로 기록할지는 정책에 달렸고요. 핵심은 사용자 관점의 종료 상태와 provider 관점의 종료 상태를 같은 것으로 보면 안 된다는 점이에요.
 
 ## 감사로그를 provider 저장소에 맡길 수 없는 이유
 
-Background mode에서는 결과 보존도 따로 설계해야 해요. Zero Data Retention 프로젝트는 background 요청이 store=false로 실행돼도 비동기 실행과 polling을 위해 response data를 대략 10분 동안 임시 저장할 수 있어요. Modified Abuse Monitoring 프로젝트에서도 background response는 store=true를 명시한 경우에만 polling 기간 이후까지 보존돼요. store를 생략하거나 false로 두면 대략 10분 뒤 삭제될 수 있거든요.
+Background mode에서는 결과 보존도 따로 설계해야 해요. Zero Data Retention 프로젝트는 background 요청이 `store=false`로 실행돼도 비동기 실행과 polling을 위해 response data를 대략 10분 동안 임시 저장할 수 있어요. Modified Abuse Monitoring 프로젝트에서도 background response는 `store=true`를 명시한 경우에만 polling 기간 이후까지 보존되고, store를 생략하거나 false로 두면 대략 10분 뒤 삭제될 수 있고요.
 
-Slack 업무 자동화 시스템의 결과는 나중에도 어떤 근거로 어떤 답을 냈는지 확인할 수 있어야 해요.
+10분이면 충분할까요? 감사로그로 쓰기엔 턱없이 짧아요. 업무 자동화 시스템의 결과는 몇 달 뒤에도 어떤 근거로 어떤 답을 냈는지 확인할 수 있어야 하니까요. 업무 로그를 쓰는 워커나 PR 리뷰를 만드는 워커, 그날 할 일을 정리하는 워커가 낸 산출물이 전부 여기 해당해요.
 
-여기에는 agent/work-reviewer가 만든 업무 로그와 agent/code-reviewer가 만든 PR 리뷰가 들어가요. agent/pm이 만든 daily plan도 같은 기준으로 확인할 수 있어야 해요.
+그러니 provider 쪽 retrieve 가능 시간에 기대면 안 돼요. 결과를 가져오는 job은 retrieve하자마자 필요한 출력과 provider run id, 종료 이벤트 시각, 원본 상태를 내부 DB에 복사해야 해요.
 
-OpenAI 쪽 retrieve 가능 시간에만 기대면 감사로그가 비어 버릴 수 있어요. webhook hydrate job은 response를 retrieve하자마자 필요한 출력, provider run id, terminal event 시각, 원본 상태를 내부 DB와 EvidenceRecord에 복사해야 해요.
-
-agent-run에 필요한 필드는 providerRunId 하나로 끝나지 않아요. 외부 response id, 마지막으로 받은 webhook delivery id 또는 별도 delivery table, terminal event 수신 시각, provider terminal status, retrieve 성공 여부가 최소한 필요해요. webhookDeliveryId를 AgentRun의 단일 필드에 두면 마지막 delivery만 남아 중복 delivery를 72시간 동안 막기 어려워요.
-
-delivery dedupe는 webhook 모듈의 별도 저장소로 빼고, AgentRun에는 provider run과 내부 상태 전이에 필요한 요약을 남기는 편이 자연스러워요.
+실행 기록에 필요한 필드도 provider run id 하나로 끝나지 않아요. 외부 response id, 마지막으로 받은 delivery id 또는 별도 delivery 테이블, 종료 이벤트 수신 시각, provider 종료 상태, retrieve 성공 여부가 최소한 필요하거든요. delivery id를 실행 기록의 단일 필드에 두면 마지막 것만 남아 중복 delivery를 72시간 동안 막기 어려워요. 그래서 delivery 중복 제거는 별도 저장소로 빼고, 실행 기록에는 provider run과 내부 상태 전이에 필요한 요약만 남기는 편이 자연스러워요.
 
 ## 모든 에이전트에 필요한 패턴은 아니다
 
-이 구조에 직접 닿는 모듈은 agent-run, model-router, slack, webhook이에요.
+이 구조에 직접 닿는 자리는 넷이에요. Slack 진입점이 빠른 접수 응답과 진행 중 메시지를 맡고, 실행 기록이 내부 상태와 근거를 관리하고, 모델 라우터가 실행 시작과 결과 가져오기를 나누고, webhook 수신부가 provider 이벤트를 내부 job으로 넘기는 얇은 진입점이 되는 셈이죠.
 
-slack은 빠른 ack와 진행 중 메시지를 맡고, agent-run은 내부 실행 상태와 EvidenceRecord를 관리해요. model-router는 background provider의 시작과 결과 hydrate를 나눠야 해요. webhook은 provider event를 받아 내부 job으로 넘기는 얇은 진입점이 되는 셈이죠.
+다만 잘 맞는 작업은 제한적이에요. 출력과 reasoning 시간이 길고 Slack에 최종 결과를 게시하는 작업, 그러니까 PR 리뷰를 만들거나 업무 로그를 쓰거나 그날 할 일을 정리하는 쪽이 후보예요. 반대로 자연어에서 날짜와 기간만 뽑아내는 데만 LLM을 쓰고 계산은 규칙에 맡기는 짧은 작업에는 과하고요.
 
-이 방식에 잘 맞는 agent는 제한적이에요.
+주의할 조합도 있어요. 이미 GitHub webhook으로 자동 트리거되는 작업에 이 패턴을 더하면 이벤트 출처가 둘이 돼요. 그런 작업은 OpenAI webhook을 붙이기 전에 중복 제거 키와 추적 id 설계부터 정리해야 해요.
 
-출력과 reasoning 시간이 길어질 수 있고 Slack에 최종 결과를 게시하는 작업이 후보예요. agent/code-reviewer, agent/work-reviewer, agent/pm이 여기에 들어가요. agent/be, agent/be-schema, agent/be-sre도 같은 후보예요.
+## 그런데 제 시스템은 전제부터 안 맞아요
 
-agent/vacation처럼 자연어 파라미터 추출 정도에만 LLM을 쓰는 짧은 작업에는 과해요. agent/issue-labeler나 agent/be-fix처럼 이미 GitHub webhook 자동 트리거와 맞물린 작업은 event source가 두 개가 돼요. 이런 작업은 OpenAI webhook을 더하기 전에 dedupe key와 trace id 설계부터 정리해야 해요.
+가장 큰 전제는 Responses API를 직접 호출하는 provider가 있어야 한다는 점이에요.
 
-가장 큰 전제는 OpenAI Responses API를 직접 호출하는 provider가 있어야 한다는 점이에요.
+제 시스템은 그렇지 않아요. 모델 실행이 **구독형 CLI를 자식 프로세스로 띄우는 방식**으로 감싸져 있고 API 키를 쓰지 않거든요. 그러면 background response id를 받을 수도 없고 webhook을 받을 대상도 없어요. 이 상태에서는 작업 큐의 worker가 실행을 붙잡고 있는 지금 구조가 여전히 현실적인 선택이에요.
 
-현재 모델 실행이 CLI 구독 기반으로 감싸져 있고 API key를 쓰지 않는 구조라면 background response id나 OpenAI webhook을 받을 수 없어요. 이런 상태에서는 BullMQ worker를 붙잡는 구조가 여전히 현실적인 선택이에요.
+도입하려면 모델 라우터에 Responses API background provider를 별도 경로로 추가하고 작업 하나부터 opt-in해야 해요. 그 전에는 이 글의 나머지가 전부 그림일 뿐이고요.
 
-도입하려면 model-router에 Responses API background provider를 별도 경로로 추가하고 해당 agent부터 opt-in해야 해요.
+## 그래도 남는 것: 상태 전이표
 
-## 구현은 상태 전이표에서 시작한다
+전제가 안 맞아도 이 정리에서 남는 게 있어요. 필드 몇 개를 더하는 문제가 아니라 **상태 전이를 먼저 적어야 하는 문제**라는 걸 알게 됐거든요.
 
-AgentRunService.execute에 providerRunId, webhookDeliveryId, terminalEventReceivedAt 세 필드만 추가해서는 충분하지 않아요. delivery id는 중복 제거 이력을 위해 별도 테이블이 필요할 가능성이 높아요. terminal event에는 completed뿐 아니라 failed, cancelled, incomplete도 들어올 수 있어요. 내부 상태가 이미 terminal일 때 어떤 이벤트를 폐기하고, 어떤 이벤트를 감사로그에만 남길지도 정해야 해요.
+provider run id와 delivery id, 종료 이벤트 시각 세 필드를 실행 기록에 추가하는 것만으로는 부족해요. delivery id는 중복 제거 이력을 위해 별도 테이블이 필요할 가능성이 높고, 종료 이벤트에는 completed뿐 아니라 failed·cancelled·incomplete도 들어오고, 내부 상태가 이미 종료일 때 어떤 이벤트를 폐기하고 어떤 이벤트를 감사로그에만 남길지도 정해야 해요.
 
-webhook endpoint의 raw body 보존 방식과 빠른 2xx 처리 정책도 함께 정해야 해요.
+webhook endpoint의 raw body 보존 방식과 빠른 2xx 처리 정책도 같이 정해야 하고요. 서명 검증 실패를 어떻게 기록할지, 결과 가져오기 job을 큐에 넣는 데 실패했을 때 2xx를 돌릴지 5xx로 재시도시킬지도 결정해야 해요. 이 기준이 있어야 Slack 진입점과 실행 기록, webhook 수신부가 같은 완료 이벤트를 같은 의미로 해석하거든요.
 
-NestJS에서 OpenAI webhook endpoint만 raw body를 보존할 수 있는지 확인해야 해요. 서명 검증 실패를 어떻게 기록할지도 정해야 해요. retrieve job enqueue에 실패했을 때 2xx를 돌릴지, 5xx로 재시도시킬지도 결정해야 해요. 이 기준이 있어야 agent-run, webhook, slack이 같은 완료 이벤트를 같은 의미로 해석해요.
+결국 이 패턴의 목적은 worker를 빨리 끝내는 데 있지 않아요. **provider 실행과 사용자에게 약속한 실행 상태를 분리하고**, 중복과 순서 역전, 취소 경합, 제한된 보존 기간 속에서도 완료 이벤트를 한 번만 내부 상태로 모으는 데 있어요.
 
-결국 이 패턴의 목적은 worker를 단순히 빨리 끝내는 데 있지 않아요. provider 실행과 사용자에게 약속한 실행 상태를 분리하고, 중복과 순서 역전, 취소 race, 제한된 보존 기간 속에서도 완료 이벤트를 한 번만 내부 상태로 모으는 데 있어요.
+다음에 해볼 만한 걸 하나 남겨요. 지금 쓰는 시스템에서 긴 작업 하나를 골라 **상태 전이표를 손으로 적어 보세요.** 「이미 취소된 실행에 완료가 도착하면」 칸이 비어 있다면, 그 칸이 이 글에서 말한 경합이 실제로 지나가는 자리예요.
 
-참고 자료:
+## 출처
 
-- https://developers.openai.com/api/docs/guides/background
-- https://developers.openai.com/api/docs/guides/webhooks
-- https://developers.openai.com/api/reference/resources/webhooks/methods/unwrap
-- https://openai.com/index/new-tools-and-features-in-the-responses-api
-- https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md
-- https://hookdeck.com/webhooks/platforms/guide-to-openai-webhooks-features-and-best-practices
+제품 동작과 제한은 문서 확인 시점에 따라 달라질 수 있어요. 아래 자료는 2026년 9월 6일에 확인했어요.
+
+| 제목 | 자료 링크 | 본문 주장 대응 | 확인일 |
+| --- | --- | --- | --- |
+| Background mode | [직접 링크](https://developers.openai.com/api/docs/guides/background) | `background: true` 로 등록 후 즉시 반환, `queued`·`in_progress` 상태, retrieve와 cancel endpoint의 idempotent 동작, ZDR·Modified Abuse Monitoring 프로젝트의 10분 임시 보존 | 2026-09-06 |
+| Webhooks | [직접 링크](https://developers.openai.com/api/docs/guides/webhooks) | payload가 `data.id` 만 싣는 구조, 2xx 미반환 시 재시도와 최대 72시간, 3xx 를 성공으로 보지 않음 | 2026-09-06 |
+| webhooks.unwrap | [직접 링크](https://developers.openai.com/api/reference/resources/webhooks/methods/unwrap) | raw body 와 headers 를 받아 서명 검증과 파싱을 함께 처리하는 helper | 2026-09-06 |
+| Standard Webhooks 사양 | [직접 링크](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md) | `webhook-id`·`webhook-timestamp`·`webhook-signature` 세 헤더, 서명 대상이 본문 바이트열이라는 점 | 2026-09-06 |
+| Guide to OpenAI webhooks | [직접 링크](https://hookdeck.com/webhooks/platforms/guide-to-openai-webhooks-features-and-best-practices) | at-least-once 전달에서 delivery 단위와 resource 단위로 중복 제거를 두 겹 두는 관행(1차 출처가 아닌 해설 자료) | 2026-09-06 |
+| New tools and features in the Responses API | https://openai.com/index/new-tools-and-features-in-the-responses-api | background mode 도입 배경. **확인 시점에 자동 요청이 403 으로 막혔다** — 보조 자료이고, 위 공식 문서만으로 본문의 모든 주장을 확인할 수 있다 | 2026-09-06 |
