@@ -4,7 +4,7 @@ description: "Slack 업무봇에 기능을 더할 때마다 실행 기록과 평
 pubDatetime: 2026-08-23T19:07:00+09:00
 category: backend
 ---
-업무봇에 기능을 하나 더 붙였는데, 실행 기록을 어디에 남길지부터 다시 정하게 된 적 있나요? 저는 Slack에서 도는 개인 업무봇([personal_agents](https://github.com/JSL107/personal_agents))을 만들어 쓰는데, 워커를 추가할 때마다 같은 질문을 반복했어요. 입출력은 어디서 검증하고, 실행 기록은 어떤 단위로 남기고, 품질 점수는 어느 지점에 붙일까.
+업무봇에 기능을 하나 더 붙였는데, 실행 기록을 어디에 남길지부터 다시 정하게 된 적 있나요? 저는 Slack에서 도는 개인 업무봇([personal_agents](https://github.com/JSL107/personal_agents))을 만들어 쓰는데, 워커를 추가할 때마다 같은 질문을 반복했어요. 입출력은 어디서 검증하고, 실행 기록은 어떤 단위로 남기고, 품질 점수는 어느 지점에 붙일까. 여기서 **워커**는 Slack 요청 하나를 받아 처리하는 기능 단위예요. 그날 할 일을 정리하는 워커, 업무 로그를 쓰는 워커, 휴가 일수를 계산하는 워커가 각각 하나씩이고요.
 
 이 글에서 **agent**는 다음에 무엇을 할지 모델이 그때그때 정하는 실행을, **workflow**는 순서와 데이터 흐름을 사람이 미리 못 박아 둔 실행을 뜻해요. 둘을 가르지 않고 전부 "AI가 처리한다"로 묶어 두면 문제가 생겨요. 결과가 이상할 때 **모델의 판단이 틀린 건지 순서가 잘못된 건지 구분할 수 없거든요.**
 
@@ -16,7 +16,7 @@ category: backend
 
 반대로 순서가 이미 정해진 일도 있어요. GitHub에서 assigned task를 가져오고 전일 plan과 사용자 입력을 합쳐 daily plan을 만드는 순서는 비교적 분명하고, PR 리뷰도 diff 수집과 컨텍스트 정리, 리뷰 생성, 근거 검증으로 나눌 수 있거든요.
 
-이 모두를 agent라고 부르면 편하지만, 경계를 나누지 않으면 추적과 평가가 어려워져요. 제가 만든 NestJS 서비스에서는 이 문제를 domain, usecase, queue, trace, eval, memory 같은 계층으로 나눠 뒀어요. 자유도는 높지만 기능이 늘 때마다 실행 저장 방식과 입출력 검증, trace 범위, 평가 점수를 붙일 위치를 다시 정해야 하거든요. 도입부에서 말한 반복이 여기서 나와요.
+이 모두를 agent라고 부르면 편하지만, 경계를 나누지 않으면 추적과 평가가 어려워져요. 제가 만든 NestJS 서비스에서는 이 문제를 domain, usecase, queue, trace, eval, memory 같은 계층으로 나눠 뒀어요. domain에는 규칙과 타입이, usecase에는 워커 하나가 실제로 밟는 절차가 들어가요. queue는 오래 걸리는 일을 뒤로 미루는 자리고, trace는 실행 기록, eval은 결과 품질 판정, memory는 이전 대화와 선호를 맡고요. 자유도는 높지만 기능이 늘 때마다 실행 저장 방식과 입출력 검증, trace 범위, 평가 점수를 붙일 위치를 다시 정해야 하거든요. 도입부에서 말한 반복이 여기서 나와요.
 
 ### Mastra 는 그 경계를 어디에 긋나
 
@@ -81,6 +81,10 @@ const step1 = createStep({
 })
 ```
 
+두 정의가 닮아 보이지만 부르는 주체가 달라요. tool은 모델이 필요하다고 판단해 골라 부르고, step은 사람이 미리 못 박은 순서가 불러요. 위 두 코드의 `execute` 모양이 다른 것도 그래서인데, tool은 `{ location }`처럼 입력 필드를 바로 받고 step은 `{ inputData }`로 한 겹 감싸 받아요.
+
+옮긴 건 정의 부분까지예요. `createWorkflow`로 step을 잇는 조립 코드나 agent·scorer를 만드는 코드는 옮기지 않았고, 그래서 뒤에 나오는 `memoryAgent`와 `customStepScorer()`, `generateContent()`도 이 글 안에는 정의가 없어요.
+
 제 봇에 대보면 Slack command 입력, GitHub task 목록, PR diff 요약, 업무 로그 산출물은 LLM에 통째로 던질 문자열이 아니라 검증 가능한 작은 데이터로 나눌 수 있어요. 업무 로그를 쓰는 워커를 예로 들면 지금은 한 번의 모델 호출로 끝나는데, 근거 수집 step과 초안 생성 step으로 쪼갤 수 있어요. 그러면 결과가 나빴을 때 근거가 부족했는지 문장이 나빴는지 나눠 볼 수 있고요.
 
 정량 근거가 실제로 들어갔는지는 뒤에 나올 scorer가 판단해요. Mastra는 이런 분해를 라이브러리 밖의 운영 관습이 아니라 framework의 기본 표현으로 만든다는 게 차이예요.
@@ -139,6 +143,8 @@ Slack 응답 하나가 이상하게 나왔을 때, 모델이 잘못 판단한 �
 Mastra의 observability는 tracing, logging, metrics, feedback, storage를 한 흐름으로 묶어요. tracing은 agent run, workflow execution, tool call, model interaction을 span으로 기록해요.
 
 실행은 span으로 남고, metrics는 span이 끝날 때 duration, token count, estimated cost를 추출해요. log는 traced context 안에서 trace/span ID와 연결되며, feedback도 trace나 span에 붙일 수 있어요.
+
+아래 설정은 Observability overview 문서의 예시를 그대로 옮긴 거예요.
 
 ```typescript
 import { Mastra } from '@mastra/core/mastra'
@@ -206,25 +212,26 @@ export const mastra = new Mastra({
 
 여기까지 잘 맞는 이야기만 했으니, 안 맞는 쪽도 적어야 공평하겠죠.
 
-Mastra는 Node.js-compatible environment에 배포할 수 있어요. standalone Mastra server로 띄우거나 기존 web framework와 통합할 수 있고요. runtime으로 Node.js v22.13.0 이상, Bun, Deno, Cloudflare를 제시하며 standalone server는 Hono를 기반으로 해요. production에서는 workflow orchestration, cron scheduling, background tool execution을 API server와 분리한 dedicated worker process에서 실행할 수 있어요.
+Mastra는 Node.js-compatible environment에 배포할 수 있어요. standalone Mastra server로 띄우거나 기존 web framework와 통합할 수 있고요. runtime으로 Node.js v22.13.0 이상, Bun, Deno, Cloudflare를 제시하며 standalone server는 Hono를 기반으로 해요. production에서는 workflow orchestration, cron scheduling, background tool execution을 API server와 분리한 dedicated worker process에서 실행할 수 있어요. 여기서 말하는 worker process는 앞에서 말한 기능 단위 워커가 아니라, API 서버와 따로 띄우는 실행 프로세스예요.
 
 문제는 그 목록이 제 시스템에 이미 있는 것들과 거의 그대로 겹친다는 점이에요. Slack Socket Mode 연결, 작업 큐(BullMQ), Prisma, 자연어 요청을 워커로 보내는 라우터, retry 정책, CLI provider 격리, 실행 기록 저장소가 이미 돌고 있어요. 새 primitive를 얹는 게 아니라 **같은 일을 하는 층이 두 겹이 되는** 상황이죠.
 
-더 걸리는 건 모델 호출 방식이에요. Mastra의 model router는 provider/model 문자열과 OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY 같은 환경변수를 사용해요. 그런데 제 봇은 API 키가 아니라 **구독형 CLI를 별도 child process로 띄워** 모델을 부르고, 그 자식 프로세스에 넘기는 환경변수를 일부러 최소한으로 깎아요. 인증 방식 자체가 다르니 model router를 그대로 쓰는 경로는 지금 구조에서 막혀 있어요.
+더 걸리는 건 모델 호출 방식이에요. Mastra의 model router는 provider/model 문자열과 OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY 같은 환경변수를 사용해요. 그런데 제 봇은 API 키가 아니라 **구독형 CLI를 별도 child process로 띄워** 모델을 부르고, 그 자식 프로세스에 넘기는 환경변수를 일부러 최소한으로 깎아요. 인증 방식 자체가 다르니 model router를 그대로 쓰는 경로는 지금 구조에서 막혀 있어요. 이 절에 적은 겹침과 불일치는 붙여 보다 겪은 실패가 아니라, 문서와 제 코드를 나란히 놓고 미리 걸러낸 것들이에요.
 
 그래서 이 글의 결론은 "도입하자"가 아니라, 겹치는 층을 두 겹으로 만들지 않으면서 가져올 수 있는 게 무엇이냐는 질문이에요.
 
 ## 도입 여부는 무엇으로 판정할까
 
-지금은 실측 결과가 없어요. 붙여서 돌려본 적이 없으니 얼마나 좋아졌다고 말할 근거가 제게는 없죠. 대신 무엇을 재면 판정이 되는지는 미리 정할 수 있으니, 나중에 확인할 때 아래 셋을 같은 기준으로 재면 돼요.
+지금은 실측 결과가 없어요. 붙여서 돌려본 적이 없으니 얼마나 좋아졌다고 말할 근거가 제게는 없죠. 대신 무엇을 재면 판정이 되는지는 미리 정할 수 있으니, 나중에 확인할 때 아래 넷을 같은 기준으로 재면 돼요.
 
 | 무엇을 | 지금 값 | 도입 후 비교 기준 |
 | --- | --- | --- |
-| 실패 원인을 가르는 데 걸리는 시간 | 미측정 | 같은 실패 사례 5건에서 원인 지점을 찾기까지의 시간 |
+| 실패 원인을 가르는 데 걸리는 시간 | 미측정, 도입 전에 같은 실패 사례 5건으로 기준값을 먼저 재둔다 | 같은 실패 사례 5건에서 원인 지점을 찾기까지의 시간 |
 | 중간 단계 품질 신호 | 최종 산출물에만 있음 | step 단위 scorer가 붙은 워커 수 |
 | 실행 기록의 중복 | 실행 테이블 1벌 | 도입 후 기록 저장소가 몇 벌인지 |
+| 재시도·재시작 뒤의 기록 수 | 미측정 | 같은 요청을 재시도하거나 서비스를 재시작했을 때 실행 기록과 scorer 결과가 각각 몇 번 쌓이는지 |
 
-셋 중 마지막이 가장 중요한데, 앞의 둘이 좋아져도 기록이 두 벌이 되면 어느 쪽이 정본인지가 새 문제로 생기거든요. 그래서 도입을 시험한다면 **워커 하나에만 얹어 기록이 한 벌로 유지되는지부터** 보는 게 맞아요.
+넷 중 실행 기록의 중복이 가장 중요한데, 앞의 둘이 좋아져도 기록이 두 벌이 되면 어느 쪽이 정본인지가 새 문제로 생기거든요. 마지막 행을 같이 둔 것도 같은 이유예요. 지금도 retry 정책이 돌고 있어서, 기록이 한 벌로 유지되는지는 재시도와 재시작에서 가장 먼저 깨지거든요. 그래서 도입을 시험한다면 **워커 하나에만 얹어 기록이 한 벌로 유지되는지부터** 보는 게 맞아요.
 
 ## 마무리
 
@@ -238,15 +245,19 @@ Mastra의 기준을 빌려 다시 나눠 보니 제 봇에서는 **workflow 후�
 
 ## 출처
 
-제품 동작과 제한은 문서 확인 시점과 버전에 따라 달라질 수 있어요. 아래 자료는 2026년 9월 7일에 직접 확인했어요. 코드 예시는 문서의 것을 그대로 옮겼고, 제 시스템에 대입한 부분은 문서가 아니라 제 판단이에요.
+제품 동작과 제한은 문서 확인 시점과 버전에 따라 달라질 수 있어요. 아래 자료는 2026년 9월 7일에 직접 확인했고, 확인일이 2026년 9월 8일인 뒤쪽 네 행은 글을 고치면서 뒤늦게 확인해 더한 것들이에요. 발행일이 확인일보다 앞선 건 글을 먼저 올린 뒤 출처를 다시 짚었기 때문이에요. Mastra 패키지 버전은 따로 확인하지 않았으니, 아래 설명은 특정 버전에서 확인한 동작이 아니라 그 시점 문서 기준으로 읽어 주세요. 코드 예시는 문서의 것을 그대로 옮겼고, 제 시스템에 대입한 부분은 문서가 아니라 제 판단이에요.
 
 | 제목 | 자료 링크 | 본문 주장 대응 | 확인일 |
 | --- | --- | --- | --- |
 | Agents vs. Workflows | [직접 링크](https://mastra.ai/learn/agents-vs-workflows) | agent는 단계가 미리 정해지지 않은 open-ended task, workflow는 실행 경로가 정해진 multi-step process | 2026-09-07 |
 | Agents overview | [직접 링크](https://mastra.ai/docs/agents/overview) | agent가 memory·logging·observability 같은 공유 자원에 접근하는 구조 | 2026-09-07 |
-| Workflows overview | [직접 링크](https://mastra.ai/docs/workflows/overview) | createStep의 inputSchema·outputSchema, createWorkflow의 .then과 .commit | 2026-09-07 |
+| Workflows overview | [직접 링크](https://mastra.ai/docs/workflows/overview) | createStep의 inputSchema·outputSchema, createWorkflow의 .then과 .commit, Standard JSON Schema 계열인 Zod·Valibot·ArkType으로 schema를 정의할 수 있다는 서술 | 2026-09-07 |
 | Tools and MCP | [직접 링크](https://mastra.ai/docs/agents/using-tools-and-mcp) | createTool의 id·description·inputSchema·execute 구성 | 2026-09-07 |
 | Memory overview | [직접 링크](https://mastra.ai/docs/memory/overview) | resource와 thread의 역할, resourceId 변경 불가, thread ID 재사용 시 조회 오류, Observational Memory의 압축 방식 | 2026-09-07 |
-| Evals overview | [직접 링크](https://mastra.ai/docs/evals/overview) | scorer의 model-graded·rule-based·statistical 방식과 0~1 점수, 과거 trace·span 채점 | 2026-09-07 |
+| Evals overview | [직접 링크](https://mastra.ai/docs/evals/overview) | scorer의 model-graded·rule-based·statistical 방식과 0~1 점수, step-level scorer가 그 step의 입출력을 받는 구조와 sampling 비율(rate 1이면 모든 실행 채점), 과거 trace·span 채점 | 2026-09-07 |
 | Deployment overview | [직접 링크](https://mastra.ai/docs/deployment/overview) | Node.js v22.13.0 이상·Bun·Deno·Cloudflare 지원, Hono 기반 standalone server, worker process 분리 권고 | 2026-09-07 |
 | AI Agent Observability | [직접 링크](https://mastra.ai/ai-agent-observability) | agent run·tool call·memory 조작을 기록하고 token·latency를 남기는 구조 | 2026-09-07 |
+| Observability | [직접 링크](https://mastra.ai/docs/observability/overview) | Observability 설정의 exporters·spanOutputProcessors·SensitiveDataFilter 구성 예시 | 2026-09-08 |
+| Mastra 홈페이지 | [직접 링크](https://mastra.ai) | AI 에이전트와 앱을 위한 TypeScript framework 표방, agent와 workflow를 기존 React·Next.js·Node.js 앱에 통합하거나 standalone endpoint로 내보내는 구성 | 2026-09-08 |
+| Models overview | [직접 링크](https://mastra.ai/models) | model router가 provider/model 문자열로 모델을 지정하고, 해당 provider의 환경변수를 읽어 요청을 보내는 방식 | 2026-09-08 |
+| Environment variables | [직접 링크](https://mastra.ai/models/environment-variables) | provider별 model prefix와 필요한 환경변수 이름(OPENAI_API_KEY·ANTHROPIC_API_KEY·GOOGLE_API_KEY) | 2026-09-08 |
