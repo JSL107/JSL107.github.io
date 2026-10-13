@@ -16,7 +16,7 @@ category: backend
 
 이 글에서는 이 회차를 루프라고 부를게요. 실행 환경과 기본 도구·권한·상태를 제공하는 틀은 하네스, 여러 단계의 분기와 재진입 경로를 표현한 구조는 그래프라고 할게요.
 
-Claude Code는 이 한 바퀴를 턴(turn)이라고 불러요. [작성자 관찰] 제가 본 "auth.ts의 실패하는 테스트를 고쳐줘" 같은 단순한 요청은 서너 턴 안에 끝나고, 테스트를 돌리고 파일을 읽어 고친 뒤 마지막에는 "고쳤습니다"라는 텍스트만 남겨요. 서너 턴 안에 끝난다는 관찰만으로 모든 작업의 턴 수를 일반화할 수는 없어요.
+Claude Code는 이 한 바퀴를 턴(turn)이라고 불러요. 제가 본 "auth.ts의 실패하는 테스트를 고쳐줘" 같은 단순한 요청은 서너 턴 안에 끝나고, 테스트를 돌리고 파일을 읽어 고친 뒤 마지막에는 "고쳤습니다"라는 텍스트만 남겨요. 서너 턴 안에 끝난다는 관찰만으로 모든 작업의 턴 수를 일반화할 수는 없어요.
 
 하네스가 기본 루프를 제공하므로 저는 매번 이 안쪽 실행기를 만들 필요가 없어요. 따라서 바깥에서는 실행기가 끝났는지가 아니라 요구한 테스트와 산출물이 실제로 충족됐는지를 확인해야 해요.
 
@@ -24,9 +24,9 @@ Claude Code는 이 한 바퀴를 턴(turn)이라고 불러요. [작성자 관찰
 
 안쪽 루프의 종료 조건을 들여다보면 문제가 있어요. 모델이 스스로 "다 했다"고 판단하니 일한 사람이 자기 일을 직접 채점하는 구조인 셈인데, [Anthropic](https://www.anthropic.com/engineering/harness-design-long-running-apps)도 장기 실행 앱용 하네스를 설계하며 같은 점을 관찰했어요.
 
-> [의역] 에이전트는 확신에 차서 자기 작업을 칭찬하는 경향이 있다. 사람이 보면 품질이 명백히 그저 그런 경우에도 그렇다.
+> 에이전트는 확신에 차서 자기 작업을 칭찬하는 경향이 있다. 사람이 보면 품질이 명백히 그저 그런 경우에도 그렇다.
 
-[출처 요약] 같은 글에서는 이를 "컨텍스트 불안(context anxiety)"이라고 부르는데, 컨텍스트(context, 모델이 한 번에 참고하는 대화와 작업 정보) 창이 차오를수록 모델이 작업을 일찍 끝내려 한다는 뜻이에요. 오래된 대화를 요약해 자리를 만들어도 이 증상은 가라앉지 않았어요.
+같은 글에서는 이를 "컨텍스트 불안(context anxiety)"이라고 부르는데, 컨텍스트(context, 모델이 한 번에 참고하는 대화와 작업 정보) 창이 차오를수록 모델이 작업을 일찍 끝내려 한다는 뜻이에요. 오래된 대화를 요약해 자리를 만들어도 이 증상은 가라앉지 않았어요.
 
 Anthropic 팀은 요약 대신 컨텍스트를 통째로 비우고 새 에이전트로 초기화했어요. 이 선택은 검증을 맡는 평가자와 실행기를 분리하고, 컨텍스트가 낡았을 때 기존 대화가 아니라 저장된 작업 상태를 기준으로 다음 실행을 시작하게 하는 근거가 돼요.
 
@@ -34,11 +34,11 @@ Anthropic 팀은 요약 대신 컨텍스트를 통째로 비우고 새 에이전
 
 안쪽 루프 자체를 고칠 수는 없어도 외부 검증을 연결할 수는 있어요. 에이전트가 "다 했습니다"라고 말하는 순간 외부 조건을 확인하고, 아직 끝나지 않았다면 새 회차로 이어주는 구조가 바깥 루프예요. 이 전환은 [Osmani 에세이가 인용한 Peter Steinberger](https://addyosmani.com/blog/loop-engineering/)의 한 문장에도 그대로 담겨 있어요. 링크는 인용을 실은 에세이로 이어지고, 원 게시물 자체는 이 글에서 확인하지 못했어요.
 
-> [의역] 이제 코딩 에이전트에게 프롬프트를 치지 마세요. 에이전트에게 프롬프트를 치는 **루프를 설계하세요**.
+> 이제 코딩 에이전트에게 프롬프트를 치지 마세요. 에이전트에게 프롬프트를 치는 **루프를 설계하세요**.
 
 Claude Code를 이끄는 Boris Cherny도 [같은 에세이에 실린 인용](https://addyosmani.com/blog/loop-engineering/)에서 자기 일을 비슷하게 설명했어요. Claude에게 직접 프롬프트를 치는 대신, 프롬프트를 치는 루프를 돌린다는 뜻이죠. 이 인용의 원 게시물도 이 글에서는 확인하지 못했어요.
 
-이 개념은 2026년 6월 여러 글에서 정리되기 시작했어요. Addy Osmani와 Kilo도 각각 [에세이](https://addyosmani.com/blog/loop-engineering/)와 [프레임](https://kilo.ai/articles/what-is-loop-engineering)으로 설명했어요. [작성자 해석] 두 글에서 제가 가져온 핵심은 이름의 기원보다 반복을 설계하는 관점이에요.
+이 개념은 2026년 6월 여러 글에서 정리되기 시작했어요. Addy Osmani와 Kilo도 각각 [에세이](https://addyosmani.com/blog/loop-engineering/)와 [프레임](https://kilo.ai/articles/what-is-loop-engineering)으로 설명했어요. 두 글에서 제가 가져온 핵심은 이름의 기원보다 반복을 설계하는 관점이에요.
 
 ### 프롬프트와 루프의 역할이 달라지는 지점
 
@@ -76,7 +76,7 @@ CI(코드 변경을 자동으로 빌드하고 테스트하는 지속적 통합)�
 
 제품을 비교하려는 글은 아니에요. Codex의 goal은 결과뿐 아니라 검증 방법, 건드릴 경계, 막혔을 때의 중단 기준까지 묶는 스레드 범위의 완료 계약에 가까워요. [Codex 문서](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex)
 
-> [의역] 목표는 지속시키되, 판정은 증거가 하게 하라.
+> 목표는 지속시키되, 판정은 증거가 하게 하라.
 
 좋은 goal은 결과·검증 방법·제약·파일과 도구의 경계·반복 정책·중단 기준을 함께 적어요. 예산이 끝나면 완료로 처리하지 말고 진행 상황과 막힌 지점을 남겨야 하며, 한 줄 수정이나 마감선이 모호한 작업을 억지로 오래 돌리는 용도로 쓰면 안 돼요.
 
@@ -156,7 +156,7 @@ evaluator는 실행 결과가 완료 조건을 만족하는지 확인해요. Ant
 
 OpenAI의 [harness engineering](https://openai.com/index/harness-engineering/)은 앞의 조건을 다룬 인접 사례로 참고할 수 있어요. 배분과 격리를 한 단계 더 밀어붙인 쪽이 Symphony인데, issue tracker(작업 요청을 관리하는 도구)를 control plane(작업을 배분하고 상태를 관리하는 기준면)으로 삼고 작업별 workspace(작업 공간)를 격리하는 운영 사례예요. 다만 Symphony를 Graph Engineering의 구현이라고 부를 근거는 없어요. 역할과 상태를 더 잘게 나눈 쪽으로는 Steve Yegge의 [Gas Town](https://yegge.ai/essays/welcome-to-gas-town/)을 별도 사례로 볼 수 있어요.
 
-검증하지 않은 적용 예시로는, 경쟁사 조사에서 하네스에 검색 도구·문서 저장 공간·네트워크 권한을 두고 그래프에 기획자 → 병렬 조사자 → 통합자 → 검사자의 순서를 두는 구성을 들 수 있어요. [작성자 해석] 앞서 제시한 경쟁사 조사 예시의 검사 단계가 실패하면 전체를 처음부터 돌리지 않고 실패한 조사나 통합 단계로 돌아가는 식이에요.
+검증하지 않은 적용 예시로는, 경쟁사 조사에서 하네스에 검색 도구·문서 저장 공간·네트워크 권한을 두고 그래프에 기획자 → 병렬 조사자 → 통합자 → 검사자의 순서를 두는 구성을 들 수 있어요. 이 예시에서 검사 단계가 실패하면 전체를 처음부터 돌리지 않고 실패한 조사나 통합 단계로 돌아가는 식이에요.
 
 ```text
 하네스
@@ -245,7 +245,7 @@ Anthropic이 공개한 게임 제작 실험은 계획·구현·검증을 포함�
 
 구성 요소를 잘 배치하는 것만으로 끝나지 않는 이유가 하나 더 있어요. [Anthropic 글](https://www.anthropic.com/engineering/harness-design-long-running-apps)에는 스프린트(짧게 나눈 작업 구간)를 잘게 쪼개는 구조를 넣었다가 없앤 이야기가 나와요. 모델이 한 세대 좋아지면서 두 시간을 쪼개지 않고 한 번에 달릴 수 있게 됐고, 그 부품이 더는 필요하지 않았거든요.
 
-제가 붙인 구성 요소 하나하나는 "모델이 이건 못 할 것"이라는 판단이라, 모델이 바뀌면 그 판단도 다시 재야 해요. [출처 요약] 모델이 좋아져도 필요한 안전장치가 모두 사라지는 건 아니고, 맡길 위치가 바뀐다고 설명해요.
+제가 붙인 구성 요소 하나하나는 "모델이 이건 못 할 것"이라는 판단이라, 모델이 바뀌면 그 판단도 다시 재야 해요. Anthropic 글은 모델이 좋아져도 필요한 안전장치가 모두 사라지는 건 아니고, 맡길 위치가 바뀐다고 설명해요.
 
 ## 내가 만든 시스템에도 이 구조가 있었다
 
@@ -365,7 +365,7 @@ provider가 거부하면 `externalEffect.status`를 `failed`로 기록하고 `ex
 
 예제의 범위는 승인 뒤 외부효과를 어떤 상태로 기록하고, 저장이 불확실할 때 어디서 사람에게 넘기는지 재현하는 데 있어요.
 
-실행 기록에는 환경 정보를 먼저 남겨요. 저장소 루트는 `/Users/juneseok/repos/JSL107.github.io`이고, 실제 저장소 사본(checkout)의 커밋은 `git rev-parse HEAD`로 확인해요. `node --version`과 `uname -a`의 결과도 함께 기록해요.
+실행 기록에는 환경 정보를 먼저 남겨요. 실제 저장소 사본(checkout)의 커밋은 `git rev-parse HEAD`로 확인해요. `node --version`과 `uname -a`의 결과도 함께 기록해요.
 
 사용한 CLI 버전은 `--version`으로 남겨요. provider 이름·인증 방식·권한 모드도 실행 조건에 포함하지만, 이 글에서는 개인 시스템의 실제 Claude Code·CLI 버전·provider·권한을 확인하지 않았어요.
 
@@ -373,10 +373,9 @@ provider가 거부하면 `externalEffect.status`를 `failed`로 기록하고 `ex
 
 프로세스 종료 코드와 내부 판정은 구분해 기록해요. `node --test`의 프로세스 종료 코드 `0`은 계약 테스트 전체의 통과를 뜻하고, `runVerification()`이 fixture 결과를 모아 기록하는 내부 `overallExitCode`는 실패 시나리오에서 `1`, 성공 시나리오에서 `0`이에요. 따라서 실패 fixture의 내부 코드가 의도대로 `1`이어도 그 값을 검증하는 테스트가 통과하면 테스트 프로세스는 `0`으로 끝나요.
 
-예제 README에 적힌 실행 조건은 "Node.js 22 이상, 실행 디렉터리는 저장소 루트, 외부 provider·인증·네트워크·추가 패키지 불필요" 한 줄이에요. 다만 2026-09-04 재실행 때의 `node --version`·`uname -a`·커밋 해시의 실제 값은 기록에 남기지 않아 이번 글에서 확인하지 못했어요. 아래 명령의 `/Users/juneseok/repos/JSL107.github.io`는 작성자 환경의 checkout 경로이므로, 독자는 자기 저장소 루트로 바꿔서 실행하면 돼요.
+예제 README에 적힌 실행 조건은 "Node.js 22 이상, 실행 디렉터리는 저장소 루트, 외부 provider·인증·네트워크·추가 패키지 불필요" 한 줄이에요. 다만 2026-09-04 재실행 때의 `node --version`·`uname -a`·커밋 해시의 실제 값은 기록에 남기지 않아 이번 글에서 확인하지 못했어요. 아래 명령은 이 블로그 저장소를 clone한 루트에서 실행하면 돼요.
 
 ```bash
-cd /Users/juneseok/repos/JSL107.github.io
 mkdir -p artifacts/loop-engineering-reference-harness
 node --test examples/loop-engineering-reference-harness/contract.test.js \
   2>&1 | tee artifacts/loop-engineering-reference-harness/node-test.log
@@ -447,6 +446,6 @@ node --test examples/loop-engineering-reference-harness/contract.test.js \
 | Loop engineering with agent-skills | [직접 링크](https://skills.addy.ie/loops/) | back pressure 원칙과 작성자·검증자 분리 | 2026-09-04 |
 | What Is Loop Engineering? | [직접 링크](https://kilo.ai/articles/what-is-loop-engineering) | 반복·관찰·조정과 대표 실패 모드 | 2026-09-04 |
 | Ralph Wiggum as a "software engineer" | [직접 링크](https://ghuntley.com/ralph/) | 파일 상태를 바탕으로 새 세션을 반복 실행하는 셸 루프의 외부 사례 | 2026-09-04 |
-| Loop Engineering 로컬 재현 예제 구현·계약 테스트 | `examples/loop-engineering-reference-harness/contract.test.js` | 메모리 조건부 갱신 모사, 단계 전이, timeoutAt, 승인 전 외부효과 차단, fixture 결과. 이 블로그 저장소의 현재 Git 작업 디렉터리(working tree)에만 있고 공개 `main`에는 아직 없어 독자가 링크로 내려받을 수 없어요. 본문의 제품 동작 설명은 이 파일에 의존하지 않아요 | 2026-09-04 |
-| Loop·하네스·그래프 개념도 SVG | `public/images/2026-09-loop-engineering/loop-harness-graph.svg` | 본문의 개념도. SVG(확장 가능한 벡터 그래픽) 파일도 같은 작업 디렉터리에만 있어 내려받을 공개 링크가 없고, 본문의 제품 동작 설명은 이 파일에 의존하지 않아요 | 2026-09-04 |
+| Loop Engineering 로컬 재현 예제 구현·계약 테스트 | [직접 링크](https://github.com/JSL107/JSL107.github.io/blob/main/examples/loop-engineering-reference-harness/contract.test.js) | 메모리 조건부 갱신 모사, 단계 전이, timeoutAt, 승인 전 외부효과 차단, fixture 결과. 본문의 제품 동작 설명은 이 파일에 의존하지 않아요 | 2026-09-04 |
+| Loop·하네스·그래프 개념도 SVG | [직접 링크](https://github.com/JSL107/JSL107.github.io/blob/main/public/images/2026-09-loop-engineering/loop-harness-graph.svg) | 본문의 개념도. 본문의 제품 동작 설명은 이 파일에 의존하지 않아요 | 2026-09-04 |
 | 짐코딩, 프롬프트 → 하네스 → 루프, 그다음이 그래프 엔지니어링 | [직접 링크](https://www.instagram.com/p/DcA4atTE_W3/?img_index=7) | 루프·하네스·그래프 관계를 생각하게 한 보조 자료. 접근 불가여도 핵심 주장에 의존하지 않음 | 2026-09-04 |
