@@ -5,7 +5,7 @@ pubDatetime: 2026-09-01T19:07:00+09:00
 category: backend
 ---
 
-Slack에서 Coding Agent CLI를 감싸는 구조는 쉽게 만들 수 있어요. 하지만 운영에 들어가면 실행 상태와 도구 호출, 권한 요청, 취소를 stdout만으로 구분하기 어렵죠. Agent Client Protocol, 줄여서 ACP는 이를 Client와 Agent 사이의 구조화된 사건으로 다뤄요. 그렇다고 곧바로 표준 경계로 삼을 수 있는 건 아니어서, 적용 범위와 protocol version을 먼저 따져야 해요. 다만 아래 글은 공식 문서와 스키마를 읽고 제 시스템에 비춰 본 정리이지 ACP Client를 붙여 돌려본 기록은 아니에요.
+Slack에서 Coding Agent CLI를 감싸는 구조는 쉽게 만들 수 있어요. 하지만 운영에 들어가면 실행 상태와 도구 호출, 권한 요청, 취소를 stdout만으로 구분하기 어렵죠. Agent Client Protocol, 줄여서 ACP는 이를 Client와 Agent 사이의 구조화된 사건으로 다뤄요. 그렇다고 곧바로 표준 경계로 삼을 수 있는 건 아니어서 적용 범위와 protocol version을 먼저 따져야 해요. 다만 아래 글은 공식 문서와 스키마를 읽고 제 시스템에 비춰 본 정리이지 ACP Client를 붙여 돌려본 기록은 아니에요.
 
 ## CLI를 감싸는 순간 생기는 운영 문제
 
@@ -17,7 +17,7 @@ stdout 텍스트에는 “최종 답변”과 “중간 로그”, “도구 실
 
 ACP가 필요한 곳이 바로 이 경계예요. ACP는 모델 API를 대체하는 규격이 아니에요. IDE, Slack 봇, 웹 UI 같은 user-facing Client가 Codex·Claude·Gemini류 Coding Agent를 구동할 때 쓰는 프로토콜이에요.
 
-세션과 프롬프트, 도구 호출, 권한 요청, 취소를 JSON-RPC 메시지로 나눠요. JSON-RPC는 method와 params를 담은 JSON 한 덩어리로 요청과 응답, 그리고 응답이 따라오지 않는 알림(notification)을 주고받는 규격이고, ACP는 그 위에 얹혀 있어요. 기존 CLI 래핑이 “프로세스를 실행하고 텍스트를 읽는 방식”이라면, ACP는 “Client와 Agent 사이의 사건을 구조화해 주고받는 방식”에 가까워요.
+세션과 프롬프트, 도구 호출, 권한 요청, 취소를 JSON-RPC 메시지로 나눠요. JSON-RPC는 method와 params를 담은 JSON 한 덩어리로 요청과 응답, 그리고 응답이 따라오지 않는 알림(notification)을 주고받는 규격이고 ACP는 그 위에 얹혀 있어요. 기존 CLI 래핑이 “프로세스를 실행하고 텍스트를 읽는 방식”이라면 ACP는 “Client와 Agent 사이의 사건을 구조화해 주고받는 방식”에 가까워요.
 
 ## ACP가 그은 선은 에디터와 에이전트 사이다
 
@@ -25,7 +25,7 @@ ACP는 code editor 또는 IDE와 coding agent 사이의 통신 표준이에요. 
 
 이 구조에서 눈여겨볼 건 역할이 완전히 갈라진다는 점이에요. Client는 사용자 인터페이스와 작업 디렉터리, MCP 서버 설정, 권한 UX를 맡아요. Agent는 세션 안에서 계획을 세우고 도구를 호출하며 결과를 스트리밍해요. 로컬 에이전트는 보통 Client의 subprocess로 실행돼 stdin/stdout 위에서 JSON-RPC로 통신하죠. 원격 에이전트에는 HTTP나 WebSocket도 상정하지만 remote agent 지원은 아직 진행 중이에요.
 
-Client가 맡는다는 MCP 서버 설정의 MCP는 Model Context Protocol을 줄인 말인데, ACP와는 잇는 양쪽이 달라요. ACP가 에디터나 Slack 봇 같은 Client와 Agent를 잇는다면, MCP는 그 Agent를 바깥 도구 서버에 잇죠. [Architecture](https://agentclientprotocol.com/get-started/architecture.md) 문서도 Client가 사용자에게 설정된 MCP 서버 정보를 프롬프트와 함께 넘겨 Agent가 그 서버에 직접 연결하게 한다고 설명하는 선까지만 다루고, 두 프로토콜의 관계를 그 이상으로 규정하지는 않아요.
+Client가 맡는다는 MCP 서버 설정의 MCP는 Model Context Protocol을 줄인 말인데 ACP와는 잇는 양쪽이 달라요. ACP가 에디터나 Slack 봇 같은 Client와 Agent를 잇는다면 MCP는 그 Agent를 바깥 도구 서버에 잇죠. [Architecture](https://agentclientprotocol.com/get-started/architecture.md) 문서도 Client가 사용자에게 설정된 MCP 서버 정보를 프롬프트와 함께 넘겨 Agent가 그 서버에 직접 연결하게 한다고 설명하는 선까지만 다루고, 두 프로토콜의 관계를 그 이상으로 규정하지는 않아요.
 
 Client와 Agent로 역할이 갈린다는 이 설계가 생각보다 큰 이유는, 기존 CLI provider에서 spawn()의 lifecycle이 곧 에이전트 실행 lifecycle이라 프로세스가 살아 있으면 실행 중, 종료되면 끝난 것으로 봐야 했기 때문이에요. ACP에서는 프로세스 생존 여부와 세션 상태가 갈라지니, 프로세스가 떠 있어도 세션은 idle일 수 있고 그 반대도 성립하죠.
 
@@ -117,7 +117,7 @@ session/prompt의 응답을 작업 완료로 읽으면 상태 표시가 통째�
 }
 ```
 
-initialize 응답의 protocolVersion이 Client가 보낸 값과 같으면 그 버전으로 진행하고, Agent가 자기 최신 버전을 대신 돌려주면 Client가 그 버전으로 내려갈지 연결을 끊을지 정해요. session/new의 cwd는 Agent의 작업 디렉터리이자 상대 경로의 기준점이고, mcpServers는 Agent가 붙을 MCP 서버 설정이에요. 아래 예시들에 나오는 sessionId는 모두 이 session/new 응답에서 받은 값이라고 보면 돼요.
+initialize 응답의 protocolVersion이 Client가 보낸 값과 같으면 그 버전으로 진행하고 Agent가 자기 최신 버전을 대신 돌려주면 Client가 그 버전으로 내려갈지 연결을 끊을지 정해요. session/new의 cwd는 Agent의 작업 디렉터리이자 상대 경로의 기준점이고 mcpServers는 Agent가 붙을 MCP 서버 설정이에요. 아래 예시들에 나오는 sessionId는 모두 이 session/new 응답에서 받은 값이라고 보면 돼요.
 
 이제 프롬프트 요청은 이렇게 시작해요.
 
@@ -146,7 +146,7 @@ initialize 응답의 protocolVersion이 Client가 보낸 값과 같으면 그 �
 }
 ```
 
-prompt 배열의 두 번째 항목인 resource는 Client가 파일 내용을 프롬프트에 통째로 실어 보내는 자리예요. uri는 그 자료를 가리키는 주소, mimeType은 어떤 종류의 내용인지, text는 실제 본문이고요. 공식 문서는 이 embedded resource를 “@-멘션으로 파일을 참조할 때처럼 프롬프트에 맥락을 넣는 선호되는 방법”으로 설명하는데, Agent가 직접 접근하지 못하는 곳의 내용도 Client가 대신 실어 보낼 수 있기 때문이에요([Content Blocks](https://agentclientprotocol.com/protocol/v2/content.md)).
+prompt 배열의 두 번째 항목인 resource는 Client가 파일 내용을 프롬프트에 통째로 실어 보내는 자리예요. uri는 그 자료를 가리키는 주소, mimeType은 어떤 종류의 내용인지, text는 실제 본문이고요. 공식 문서는 이 embedded resource를 “@-멘션으로 파일을 참조할 때처럼 프롬프트에 맥락을 넣는 선호되는 방법”으로 설명하는데 Agent가 직접 접근하지 못하는 곳의 내용도 Client가 대신 실어 보낼 수 있기 때문이에요([Content Blocks](https://agentclientprotocol.com/protocol/v2/content.md)).
 
 Agent가 이 프롬프트를 접수하면 다음과 같이 빈 result를 보내요.
 
@@ -197,7 +197,7 @@ Agent가 이 프롬프트를 접수하면 다음과 같이 빈 result를 보내�
 
 코딩 에이전트에서 가장 애매한 부분은 도구 호출이에요. 파일 읽기와 검색, 명령 실행, 수정, 삭제, 외부 fetch가 stdout 로그로만 남으면 UI와 audit log가 취약해져요. ACP v2는 이를 tool_call_update와 tool_call_content_chunk로 나눠요. tool_call_content_chunk는 도구가 뱉어내는 출력 한 조각을 그 도구 호출의 content 뒤에 이어 붙이는 이벤트라, 긴 출력을 다 모을 때까지 기다리지 않고 도착하는 대로 흘려보낼 수 있어요.
 
-LLM이 도구 호출을 요청하면 Agent는 session/update notification으로 tool_call_update를 보내요. 이 이벤트는 toolCallId를 기준으로 upsert돼요. 같은 toolCallId에서 빠진 필드는 이전 값을 유지하고, null은 값을 지워요. 구체 값은 기존 값을 대체하고 chunk는 이어 붙여요([Tool Calls](https://agentclientprotocol.com/protocol/v2/tool-calls.md)).
+LLM이 도구 호출을 요청하면 Agent는 session/update notification으로 tool_call_update를 보내요. 이 이벤트는 toolCallId를 기준으로 upsert돼요. 같은 toolCallId에서 빠진 필드는 이전 값을 유지하고 null은 값을 지워요. 구체 값은 기존 값을 대체하고 chunk는 이어 붙여요([Tool Calls](https://agentclientprotocol.com/protocol/v2/tool-calls.md)).
 
 ```json
 {
@@ -242,7 +242,7 @@ LLM이 도구 호출을 요청하면 Agent는 session/update notification으로 
 }
 ```
 
-content 안에 content가 또 들어 있는 건 층이 둘이라서예요. 바깥의 `"type": "content"`는 이 항목이 도구가 만들어 낸 표시용 내용이라는 표시이고, 그 안의 객체가 실제로 화면에 보여줄 text 블록이에요.
+content 안에 content가 또 들어 있는 건 층이 둘이라서예요. 바깥의 `"type": "content"`는 이 항목이 도구가 만들어 낸 표시용 내용이라는 표시이고 그 안의 객체가 실제로 화면에 보여줄 text 블록이에요.
 
 tool kind에는 read, edit, delete, move, search, execute, think, fetch, other가 있어요([Tool Calls](https://agentclientprotocol.com/protocol/v2/tool-calls.md)). 이 정보만으로도 Client는 벤더별 로그 파서 없이 도구 상태 UI를 만들 수 있어요. “파일을 읽는 중”, “명령 실행 승인 대기”, “수정 결과 확인”처럼 보여줄 수 있죠.
 
@@ -302,7 +302,7 @@ Client는 사용자가 고른 값을 result로 돌려줘요.
 }
 ```
 
-취소에도 별도의 의미가 있어서, 현재 active work가 취소되면 Client는 permission request에 cancelled outcome으로 응답해야 해요. Agent가 이해하지 못하는 outcome을 approval로 취급해서도 안 돼요([Tool Calls](https://agentclientprotocol.com/protocol/v2/tool-calls.md)의 Requesting Permission 절). 알 수 없는 응답을 허용으로 해석하면 권한 UX가 보안 장치가 아니라 장식이 되니까요.
+취소에도 별도의 의미가 있어서 현재 active work가 취소되면 Client는 permission request에 cancelled outcome으로 응답해야 해요. Agent가 이해하지 못하는 outcome을 approval로 취급해서도 안 돼요([Tool Calls](https://agentclientprotocol.com/protocol/v2/tool-calls.md)의 Requesting Permission 절). 알 수 없는 응답을 허용으로 해석하면 권한 UX가 보안 장치가 아니라 장식이 되니까요.
 
 ACP v2에는 elicitation/create도 있어요. Agent가 Client를 통해 사용자에게 구조화된 정보를 요청하는 기능이에요. form mode는 민감하지 않은 정보를 제한된 JSON Schema로 수집해요. 제 시스템의 slack 모듈에서 지금 버튼과 모달로 흩어져 있는 되묻기가 form mode에 대응하죠. URL mode는 OAuth처럼 민감하거나 외부 hosted workflow가 필요한 작업을 out-of-band로, 그러니까 ACP 메시지 바깥의 브라우저 같은 별도 통로로 처리하니, CLI 인증 갱신처럼 토큰이 오가는 흐름은 이쪽으로 밀어야 해요.
 
@@ -312,9 +312,9 @@ form mode로 password, API key, access token, refresh token, private key 같은 
 
 ACP를 바로 표준 경계로 삼고 싶어도 v2는 조심해서 봐야 해요. v2 protocol surface는 전체가 draft로 표시돼 있어요. version negotiation과 feature flag 뒤에 두라고 설명하죠([Migrating from v1](https://agentclientprotocol.com/protocol/v2/migration.md)).
 
-방금 말한 draft 표시와 아래 두 문단이 말할 baseline, 그리고 stable version은 서로 어긋나 보이지만 층위가 달라요. draft라는 딱지는 v2라는 표면 전체에 붙고, 안정 baseline과 불안정한 feature는 그 표면 안에서 별개 스키마 파일로 갈리며, stable version 1은 initialize에서 협상하는 wire protocol의 번호라 셋이 동시에 참일 수 있어요.
+방금 말한 draft 표시와 아래 두 문단이 말할 baseline, 그리고 stable version은 서로 어긋나 보이지만 층위가 달라요. draft라는 딱지는 v2라는 표면 전체에 붙고, 안정 baseline과 불안정한 feature는 그 표면 안에서 별개 스키마 파일로 갈리며 stable version 1은 initialize에서 협상하는 wire protocol의 번호라 셋이 동시에 참일 수 있어요.
 
-안정 baseline은 [schema/v2/schema.json](https://github.com/agentclientprotocol/agent-client-protocol/blob/main/schema/v2/schema.json)이고, 불안정한 draft feature는 그 위에 [schema/v2/schema.unstable.json](https://github.com/agentclientprotocol/agent-client-protocol/blob/main/schema/v2/schema.unstable.json)으로 layered되는 구조예요. protocolVersion: 2를 협상해도 unstable feature가 자동으로 켜지지는 않아요.
+안정 baseline은 [schema/v2/schema.json](https://github.com/agentclientprotocol/agent-client-protocol/blob/main/schema/v2/schema.json)이고 불안정한 draft feature는 그 위에 [schema/v2/schema.unstable.json](https://github.com/agentclientprotocol/agent-client-protocol/blob/main/schema/v2/schema.unstable.json)으로 layered되는 구조예요. protocolVersion: 2를 협상해도 unstable feature가 자동으로 켜지지는 않아요.
 
 현재 stable ACP protocol version은 1이에요([레포 README](https://github.com/agentclientprotocol/agent-client-protocol)). v2 기능을 전제로 Client를 만들면 기존 Agent와 연결되지 않을 수 있어요. v1만 보는 Client는 v2의 prompt lifecycle과 upsert update를 제대로 활용하지 못해요. state_update와 새 tool call streaming도 마찬가지예요.
 
@@ -322,7 +322,7 @@ ACP를 바로 표준 경계로 삼고 싶어도 v2는 조심해서 봐야 해요
 
 ### 코드 편집기 밖에서는 이점이 작아진다
 
-적용 범위에도 한계가 있어요. ACP는 “모델 호출 API”도, 일반 목적의 모든 에이전트 orchestration 표준도 아니에요. ACP의 중심은 code editor와 coding agent예요. Slack 봇이나 웹 UI도 Client가 될 수 있지만, 예시와 설계 철학은 코딩 작업의 UX에 맞춰져 있어요.
+적용 범위에도 한계가 있어요. ACP는 “모델 호출 API”도, 일반 목적의 모든 에이전트 orchestration 표준도 아니에요. ACP의 중심은 code editor와 coding agent예요. Slack 봇이나 웹 UI도 Client가 될 수 있지만 예시와 설계 철학은 코딩 작업의 UX에 맞춰져 있어요.
 
 파일 위치와 display terminal, MCP 서버, 권한 요청, 코드 diff 표시가 핵심 요소예요. 단순 Q&A 봇이나 데이터 요약 파이프라인에 억지로 붙이면 구현 부담만 커질 수 있어요.
 
@@ -338,7 +338,7 @@ TypeScript·NestJS 기반 Slack 멀티 에이전트 시스템에 ACP를 대입�
 
 ### 실행 기록을 lifecycle 단위로 채운다
 
-agent-run도 직접 영향을 받아요. 현재 agent-run이 begin → run → finish 단계와 그 실행의 근거를 함께 남기는 EvidenceRecord를 기록한다면, ACP 이벤트로 그 사이를 더 촘촘히 채울 수 있어요. prompt accepted, state_update: running, tool_call_update, session/request_permission, state_update: idle, stopReason: cancelled를 실행 lifecycle에 매핑하는 거죠.
+agent-run도 직접 영향을 받아요. 현재 agent-run이 begin → run → finish 단계와 그 실행의 근거를 함께 남기는 EvidenceRecord를 기록한다면 ACP 이벤트로 그 사이를 더 촘촘히 채울 수 있어요. prompt accepted, state_update: running, tool_call_update, session/request_permission, state_update: idle, stopReason: cancelled를 실행 lifecycle에 매핑하는 거죠.
 
 그러면 “실패했다”에서 끝나지 않아요. “권한 대기 중 취소됨”, “도구 실행 중 실패”, “프롬프트 접수 전 실패”처럼 나눌 수 있어 장애 추적이 쉬워져요.
 
@@ -362,9 +362,9 @@ agent/vacation처럼 자연어 파라미터 추출만 필요한 에이전트는 
 
 ## 붙이기 전에 initialize부터 캡처해야 한다
 
-먼저 실제 지원 현황부터 확인해야 해요. 공식 문서와 레포는 프로토콜의 형태를 보여줄 뿐이고, 제가 실제로 돌리는 Agent CLI가 지원하는 protocol version과 capability는 그와 별개거든요.
+먼저 실제 지원 현황부터 확인해야 해요. 공식 문서와 레포는 프로토콜의 형태를 보여줄 뿐이고 제가 실제로 돌리는 Agent CLI가 지원하는 protocol version과 capability는 그와 별개거든요.
 
-그래서 실험 대상부터 특정했어요. 2026년 9월 8일 기준으로 제 맥에 설치된 CLI 세 개의 `--help`를 훑어보니 ACP 모드를 노출하는 건 gemini 하나였어요. `gemini --version`은 0.46.0이고, 도움말에 `--acp`가 “Starts the agent in ACP mode”로 적혀 있어요. `--experimental-acp`는 같은 뜻의 deprecated 별칭이고요. 반면 codex-cli 0.153.4와 Claude Code 2.1.263은 `--help` 출력 어디에도 ACP 관련 플래그가 없었어요. 세 버전 모두 `--version`으로 확인한 값이에요. 도움말에 없다는 게 지원이 없다는 증명은 아니지만, 지금 당장 캡처를 걸 수 있는 명령은 `gemini --acp` 하나라는 뜻이에요. 정작 제 시스템이 운영에서 돌리는 provider는 codex 쪽이라, 첫 캡처는 운영 경로가 아니라 gemini를 대상으로 한 별도 실험이 돼요. 이 조건에서 볼 것은 세 가지예요.
+그래서 실험 대상부터 특정했어요. 2026년 9월 8일 기준으로 제 맥에 설치된 CLI 세 개의 `--help`를 훑어보니 ACP 모드를 노출하는 건 gemini 하나였어요. `gemini --version`은 0.46.0이고 도움말에 `--acp`가 “Starts the agent in ACP mode”로 적혀 있어요. `--experimental-acp`는 같은 뜻의 deprecated 별칭이고요. 반면 codex-cli 0.153.4와 Claude Code 2.1.263은 `--help` 출력 어디에도 ACP 관련 플래그가 없었어요. 세 버전 모두 `--version`으로 확인한 값이에요. 도움말에 없다는 게 지원이 없다는 증명은 아니지만 지금 당장 캡처를 걸 수 있는 명령은 `gemini --acp` 하나라는 뜻이에요. 정작 제 시스템이 운영에서 돌리는 provider는 codex 쪽이라, 첫 캡처는 운영 경로가 아니라 gemini를 대상으로 한 별도 실험이 돼요. 이 조건에서 볼 것은 세 가지예요.
 
 - initialize에서 v1/v2를 어떻게 협상하는지
 - session/prompt 뒤에 state_update가 규격대로 오는지
@@ -379,13 +379,13 @@ Slack Client의 최소 구현 범위도 정해야 해요. 처음부터 완전한
 - 권한 요청이 만료됐을 때, 즉 Slack 메시지가 만료돼 버튼을 누를 수 없게 됐을 때 어떤 outcome으로 닫히는가
 - 같은 프롬프트를 다시 보내거나 같은 명령을 다시 눌렀을 때 세션이 중복으로 열리는가, 같은 toolCallId의 update가 두 번 도착하면 upsert가 어떤 값을 남기는가
 
-“stdout parser보다 관측성이 좋아졌다”도 느낌으로 판정하면 안 되니 지표를 미리 못 박아 뒀어요. 같은 작업을 stdout parser로 돌렸을 때와 비교해 agent-run에 적재되는 lifecycle 이벤트 종류 수가 늘어야 하고, 실패한 실행을 프롬프트 접수 전·도구 실행 중·권한 대기 중·사용자 취소로 분류할 수 있었던 비율이 올라가야 해요. 두 지표가 함께 올라가면 그때 model-router의 provider 경계를 ACP 중심으로 다시 설계할 수 있어요. 여기까지는 무엇을 재기로 했는지를 정한 것이고, 실제로 잰 값은 아직 없어요.
+“stdout parser보다 관측성이 좋아졌다”도 느낌으로 판정하면 안 되니 지표를 미리 못 박아 뒀어요. 같은 작업을 stdout parser로 돌렸을 때와 비교해 agent-run에 적재되는 lifecycle 이벤트 종류 수가 늘어야 하고 실패한 실행을 프롬프트 접수 전·도구 실행 중·권한 대기 중·사용자 취소로 분류할 수 있었던 비율이 올라가야 해요. 두 지표가 함께 올라가면 그때 model-router의 provider 경계를 ACP 중심으로 다시 설계할 수 있어요. 여기까지는 무엇을 재기로 했는지를 정한 것이고 실제로 잰 값은 아직 없어요.
 
-ACP의 가치는 프로토콜 자체보다 경계를 명확히 만드는 데 있어요. stable version은 1인데 제가 탐내는 lifecycle은 전부 draft인 v2 쪽에 있고, 정작 운영에서 돌리는 두 CLI에는 ACP 모드가 보이지 않았어요. 그래서 저는 ACP를 “도입할지 말지”의 문제로 두지 않기로 했어요. stdout parser를 그대로 두더라도 실행 상태와 권한, 취소를 별도 사건으로 기록하는 일은 지금 당장 할 수 있고, 그 기록이 쌓이면 ACP로 갈아탈지는 저절로 판가름 나거든요. 프로토콜을 먼저 고르는 대신 경계를 먼저 그어두는 쪽이 되돌리기도 쉽고요.
+ACP의 가치는 프로토콜 자체보다 경계를 명확히 만드는 데 있어요. stable version은 1인데 제가 탐내는 lifecycle은 전부 draft인 v2 쪽에 있고 정작 운영에서 돌리는 두 CLI에는 ACP 모드가 보이지 않았어요. 그래서 저는 ACP를 “도입할지 말지”의 문제로 두지 않기로 했어요. stdout parser를 그대로 두더라도 실행 상태와 권한, 취소를 별도 사건으로 기록하는 일은 지금 당장 할 수 있고 그 기록이 쌓이면 ACP로 갈아탈지는 저절로 판가름 나거든요. 프로토콜을 먼저 고르는 대신 경계를 먼저 그어두는 쪽이 되돌리기도 쉽고요.
 
 ## 참고한 공식 출처
 
-아래 문서는 글을 올린 뒤 출처를 다시 짚으며 2026년 9월 8일에 모두 직접 열어 제목과 인용한 문장을 확인했어요. ACP는 v2 표면 전체가 draft라 내용이 바뀔 수 있으니, 읽는 시점에 다시 확인하는 편이 안전해요. `.md`로 끝나는 주소는 문서 사이트가 제공하는 평문 판이고, 열리지 않으면 `.md`를 뗀 같은 주소의 일반 페이지로 대신 볼 수 있어요.
+아래 문서는 글을 올린 뒤 출처를 다시 짚으며 2026년 9월 8일에 모두 직접 열어 제목과 인용한 문장을 확인했어요. ACP는 v2 표면 전체가 draft라 내용이 바뀔 수 있으니, 읽는 시점에 다시 확인하는 편이 안전해요. `.md`로 끝나는 주소는 문서 사이트가 제공하는 평문 판이고 열리지 않으면 `.md`를 뗀 같은 주소의 일반 페이지로 대신 볼 수 있어요.
 
 - Introduction — ACP의 정의와 목적, LSP 비유, local/remote 지원 범위. 리드와 「ACP가 그은 선은 에디터와 에이전트 사이다」 — https://agentclientprotocol.com/get-started/introduction
 - Architecture — Client와 Agent의 역할 분담, subprocess와 stdio 위의 JSON-RPC, 연결당 concurrent session, MCP와의 관계. 「ACP가 그은 선은 에디터와 에이전트 사이다」 — https://agentclientprotocol.com/get-started/architecture.md
@@ -402,4 +402,4 @@ ACP의 가치는 프로토콜 자체보다 경계를 명확히 만드는 데 있
 - schema/v2/schema.json — v2의 안정 baseline 스키마 파일. GitHub 웹 화면이 막히면 `https://raw.githubusercontent.com/agentclientprotocol/agent-client-protocol/main/schema/v2/schema.json`로 받을 수 있어요 — https://github.com/agentclientprotocol/agent-client-protocol/blob/main/schema/v2/schema.json
 - schema/v2/schema.unstable.json — baseline 위에 얹히는 draft feature 스키마 파일. 같은 방식으로 `https://raw.githubusercontent.com/agentclientprotocol/agent-client-protocol/main/schema/v2/schema.unstable.json`이 대체 경로예요 — https://github.com/agentclientprotocol/agent-client-protocol/blob/main/schema/v2/schema.unstable.json
 
-두 스키마 파일은 본문이 “안정 baseline과 unstable layer가 별개 파일로 갈린다”고 말할 때 그 파일이 실재함을 보이려고 단 링크예요. 파일 내용을 직접 읽어 인용한 대목은 없어서, 링크가 열리지 않아도 본문의 다른 주장은 영향을 받지 않아요. 반대로 위 문서 목록의 Migrating from v1과 레포 README는 본문의 버전·층위 서술이 직접 기대고 있는 자료예요.
+두 스키마 파일은 본문이 “안정 baseline과 unstable layer가 별개 파일로 갈린다”고 말할 때 그 파일이 실재함을 보이려고 단 링크예요. 파일 내용을 직접 읽어 인용한 대목은 없어서 링크가 열리지 않아도 본문의 다른 주장은 영향을 받지 않아요. 반대로 위 문서 목록의 Migrating from v1과 레포 README는 본문의 버전·층위 서술이 직접 기대고 있는 자료예요.

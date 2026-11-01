@@ -62,11 +62,11 @@ invoke_workflow는 여러 에이전트나 GenAI operation을 조합한 프로세
 
 ### 담당 실행 단위는 agent invocation으로 보는 편이 자연스러워요
 
-invoke_agent는 같은 프로세스 안에서 GenAI agent를 호출할 때도 쓸 수 있어요. span kind는 INTERNAL이고, agent name이 있으면 invoke_agent {gen_ai.agent.name}, 없으면 invoke_agent를 권장해요. hosted agent만을 위한 규칙이 아니라 LangChain agents, CrewAI agents 같은 로컬 framework operation에도 적용할 수 있어요.
+invoke_agent는 같은 프로세스 안에서 GenAI agent를 호출할 때도 쓸 수 있어요. span kind는 INTERNAL이고 agent name이 있으면 invoke_agent {gen_ai.agent.name}, 없으면 invoke_agent를 권장해요. hosted agent만을 위한 규칙이 아니라 LangChain agents, CrewAI agents 같은 로컬 framework operation에도 적용할 수 있어요.
 
 이 시스템에서 그날 할 일을 정리하거나 PR 리뷰를 만들거나 업무 로그를 생성하는 쪽은 각각 담당 실행 단위예요. 사용자의 Slack 요청이 라우터를 거쳐 이 실행 단위에 도달하면 invoke_agent span을 열 수 있어요. 그러면 trace tree에서 “라우터는 성공했지만 담당 에이전트가 실패했다”는 경우와 “담당 에이전트 안의 모델 호출이 실패했다”는 경우를 구분할 수 있어요.
 
-모든 서비스 클래스를 agent로 부르면 안 돼요. 휴가 잔여일을 계산하는 기능이 대부분 결정론적 계산이고 LLM은 자연어 파라미터를 추출하는 데만 쓴다면, 전체 기능을 invoke_agent로 감싸기보다 LLM 추출 호출만 chat으로 남기는 편이 실제 구조에 더 가까워요.
+모든 서비스 클래스를 agent로 부르면 안 돼요. 휴가 잔여일을 계산하는 기능이 대부분 결정론적 계산이고 LLM은 자연어 파라미터를 추출하는 데만 쓴다면 전체 기능을 invoke_agent로 감싸기보다 LLM 추출 호출만 chat으로 남기는 편이 실제 구조에 더 가까워요.
 
 ### 계획 단계는 구분할 수 있을 때만 plan으로 남겨야 해요
 
@@ -149,7 +149,7 @@ sdk.start();
 
 ## 변경될 수 있는 이름은 adapter에 모아요
 
-GenAI semantic conventions 문서의 상태는 Development예요. 공식 저장소도 core semantic conventions와 별도 GenAI conventions 저장소로 운영하고, human-readable 문서의 큰 부분은 model YAML에서 생성해요. 장기 SLA나 DB 컬럼 이름으로 바로 고정하기에는 조심스러운 단계예요.
+GenAI semantic conventions 문서의 상태는 Development예요. 공식 저장소도 core semantic conventions와 별도 GenAI conventions 저장소로 운영하고 human-readable 문서의 큰 부분은 model YAML에서 생성해요. 장기 SLA나 DB 컬럼 이름으로 바로 고정하기에는 조심스러운 단계예요.
 
 애플리케이션 코드 곳곳에 gen_ai.usage.input_tokens 같은 문자열을 흩뿌리면 convention이 바뀌었을 때 수정할 곳을 찾기 어려워요. GenAiTelemetryAttributes 같은 작은 adapter나 mapper에 이름을 모으고 서비스 코드에서는 의미가 드러나는 함수로 호출하는 편이 좋아요.
 

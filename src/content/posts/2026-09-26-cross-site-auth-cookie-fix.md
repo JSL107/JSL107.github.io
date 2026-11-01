@@ -67,7 +67,7 @@ sameSite: this.isProductionEnvironment ? 'none' : 'lax',
 
 전역 오리진 검사 가드도 추가했어요. CORS는 `multipart/form-data`나 일부 폼 POST 같은 simple request가 전송되는 것 자체를 막지 못하고 브라우저가 응답을 읽는 것만 제한해요. 그래서 상태를 변경하는 요청은 서버에서도 `Origin`을 검사하도록 했어요.
 
-`GET`, `HEAD`, `OPTIONS`는 검사 대상에서 제외했어요. 나머지 요청에 허용되지 않은 `Origin`이 있으면 `403 Forbidden`으로 거부하고, 서버 간 호출처럼 `Origin` 헤더가 없는 요청은 그대로 통과시켜요.
+`GET`, `HEAD`, `OPTIONS`는 검사 대상에서 제외했어요. 나머지 요청에 허용되지 않은 `Origin`이 있으면 `403 Forbidden`으로 거부하고 서버 간 호출처럼 `Origin` 헤더가 없는 요청은 그대로 통과시켜요.
 
 ## 사용자에게 노출되는 401 메시지도 정리했다
 

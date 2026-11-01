@@ -5,9 +5,9 @@ pubDatetime: 2026-10-16T09:00:00+09:00
 category: backend
 ---
 
-Slack 에이전트가 하나뿐이라면 프롬프트 문자열과 파서 함수 하나씩으로도 버틸 수 있어요. 응답이 JSON처럼 오기를 기대하다가 실패하면 정규식으로 조금 보정하고, 테스트도 “이 예시 문자열을 넣으면 이 타입이 나온다” 정도로 만들면 돼요. 문제는 에이전트가 늘어난 뒤부터 생겨요. PM 에이전트는 DailyPlan을 만들고, Work Reviewer는 업무 로그를 만들고, Code Reviewer는 PR 리뷰를 만들어요. 저마다 프롬프트와 출력 타입, 실패 처리가 조금씩 다르다 보니 어느 순간 “이 타입은 코드에 있는데 프롬프트는 아직 옛날 약속을 말하고 있는” 상태가 돼요.
+Slack 에이전트가 하나뿐이라면 프롬프트 문자열과 파서 함수 하나씩으로도 버틸 수 있어요. 응답이 JSON처럼 오기를 기대하다가 실패하면 정규식으로 조금 보정하고 테스트도 “이 예시 문자열을 넣으면 이 타입이 나온다” 정도로 만들면 돼요. 문제는 에이전트가 늘어난 뒤부터 생겨요. PM 에이전트는 DailyPlan을 만들고, Work Reviewer는 업무 로그를 만들고, Code Reviewer는 PR 리뷰를 만들어요. 저마다 프롬프트와 출력 타입, 실패 처리가 조금씩 다르다 보니 어느 순간 “이 타입은 코드에 있는데 프롬프트는 아직 옛날 약속을 말하고 있는” 상태가 돼요.
 
-이 글은 BAML 공식 문서, TypeScript 설치 문서, baml_client 문서, 공식 GitHub 저장소와 홈페이지를 읽고 정리했어요. 직접 프로젝트에 설치해 운영해 본 후기는 아니에요. 그래서 “바로 도입하면 된다”기보다는 “어디의 계약을 떼어낼 수 있고, 어디는 아직 조심해야 하는가”에 초점을 맞췄어요.
+이 글은 BAML 공식 문서, TypeScript 설치 문서, baml_client 문서, 공식 GitHub 저장소와 홈페이지를 읽고 정리했어요. 직접 프로젝트에 설치해 운영해 본 후기는 아니에요. 그래서 “바로 도입하면 된다”기보다는 “어디의 계약을 떼어낼 수 있고 어디는 아직 조심해야 하는가”에 초점을 맞췄어요.
 
 ## 프롬프트가 많아질수록 진짜 문제는 모델 호출이 아니라 계약이 된다
 
@@ -15,7 +15,7 @@ LLM 기능을 처음 붙일 때 가장 먼저 눈에 들어오는 건 모델 호
 
 TypeScript 백엔드에서는 보통 Zod, JSON Schema, 수동 parser, DTO 테스트로 이 문제를 막아요. 익숙하면서도 강력한 방식이지만 계약이 앱 코드 곳곳에 흩어져요. 프롬프트는 prompt.ts에, 출력 타입은 type.ts에, parser는 output-parser.ts에 있고 재시도 정책은 model provider 주변에 있어요. 테스트도 별도 spec 파일에 들어가요. 하나씩 보면 잘 정리돼 있어도 전체 계약은 한눈에 들어오지 않아요.
 
-BAML은 바로 이 경계를 겨냥해요. “LLM을 호출하는 더 편한 SDK”라기보다는 “LLM function 계약을 별도 파일에 선언하고, 그 계약으로 언어별 클라이언트를 생성하는 도구”에 가까워요. OpenAPI가 HTTP API의 요청과 응답 계약을 앱 코드 밖에 두듯이, BAML은 LLM 호출의 입력과 출력, 프롬프트, 테스트 가능성을 .baml 파일 쪽으로 옮겨요.
+BAML은 바로 이 경계를 겨냥해요. “LLM을 호출하는 더 편한 SDK”라기보다는 “LLM function 계약을 별도 파일에 선언하고 그 계약으로 언어별 클라이언트를 생성하는 도구”에 가까워요. OpenAPI가 HTTP API의 요청과 응답 계약을 앱 코드 밖에 두듯이, BAML은 LLM 호출의 입력과 출력, 프롬프트, 테스트 가능성을 .baml 파일 쪽으로 옮겨요.
 
 ## BAML은 앱 코드 안의 파서가 아니라 별도 계약 파일을 만든다
 
@@ -37,7 +37,7 @@ function UseTool(user_message: string) -> WeatherAPI {
 
 이 예시에서 중요한 건 날씨가 아니에요. WeatherAPI라는 출력 구조와 UseTool이라는 LLM 호출이 같은 계약 파일에 들어 있다는 점이에요. 이 시스템에 대입하면 WeatherAPI 자리에는 DailyPlan, WorklogDraft, PullRequestReview 같은 도메인 출력 타입이 들어가고, UseTool 자리는 /today, /worklog, /review-pr의 내부 LLM 호출 하나에 해당해요.
 
-기존 방식과의 차이도 여기서 생겨요. Zod나 JSON Schema를 앱 코드 안에서 쓰면 “모델 응답을 받은 뒤 검증하는 코드”가 돼요. BAML은 그보다 앞에서 “이 LLM 호출은 애초에 이런 입력을 받고 이런 출력을 돌려주는 함수다”라고 선언하고, 그 선언으로 TypeScript 클라이언트와 타입을 만들어요. 파서가 사라진다기보다는 파싱과 보정 책임이 생성 클라이언트 쪽으로 옮겨가는 셈이에요.
+기존 방식과의 차이도 여기서 생겨요. Zod나 JSON Schema를 앱 코드 안에서 쓰면 “모델 응답을 받은 뒤 검증하는 코드”가 돼요. BAML은 그보다 앞에서 “이 LLM 호출은 애초에 이런 입력을 받고 이런 출력을 돌려주는 함수다”라고 선언하고 그 선언으로 TypeScript 클라이언트와 타입을 만들어요. 파서가 사라진다기보다는 파싱과 보정 책임이 생성 클라이언트 쪽으로 옮겨가는 셈이에요.
 
 ## TypeScript에서는 baml_client가 애플리케이션과 계약 사이를 잇는다
 
@@ -70,7 +70,7 @@ async function ExampleStream(raw_resume: string): Promise<Resume> {
 }
 ```
 
-이 코드에서 애플리케이션은 JSON 문자열을 직접 다루지 않아요. b.ExtractResume(...)은 완성된 Resume을 반환하고, streaming 호출은 중간 partial 메시지를 순회한 뒤 최종 응답을 받아요. Slack 에이전트 시스템이라면 이 호출은 application layer의 usecase 안에 자리 잡게 돼요. 예를 들어 GenerateDailyPlanUsecase가 지금 model router를 호출한 뒤 parser를 거친다면, 실험 단계에서는 parser 하나를 BAML 함수 호출로 바꿔 볼 수 있어요.
+이 코드에서 애플리케이션은 JSON 문자열을 직접 다루지 않아요. b.ExtractResume(...)은 완성된 Resume을 반환하고 streaming 호출은 중간 partial 메시지를 순회한 뒤 최종 응답을 받아요. Slack 에이전트 시스템이라면 이 호출은 application layer의 usecase 안에 자리 잡게 돼요. 예를 들어 GenerateDailyPlanUsecase가 지금 model router를 호출한 뒤 parser를 거친다면 실험 단계에서는 parser 하나를 BAML 함수 호출로 바꿔 볼 수 있어요.
 
 빌드 연동도 중요해요. 생성 클라이언트를 쓰면 언제나 “소스 계약”과 “생성물”을 동기화해야 하거든요. 공식 문서는 build 전에 generate를 실행하는 예시를 제시해요.
 
@@ -89,9 +89,9 @@ NestJS 프로젝트라면 이 줄을 그대로 복사하기보다 기존 pnpm bu
 
 BAML을 쓰면 프롬프트와 타입을 가까이 둘 수 있다는 장점이 바로 드러나요. 모델 응답을 검증하는 코드를 아무리 잘 짜도 프롬프트가 타입을 정확히 설명하지 않으면 계약은 흔들려요. BAML은 함수 정의 안에서 client, prompt, input, output을 함께 다루기 때문에 “이 호출이 무엇을 약속하는지”를 작은 파일 하나로 읽을 수 있어요.
 
-개발 도구도 이 방향에 맞춰져 있어요. VSCode/Cursor 확장은 문법 하이라이팅, testing playground, prompt preview, 저장 시 generate 실행 같은 기능을 제공해요. 운영 중 자동 복구를 돕는다기보다 개발할 때 빠르게 피드백을 받도록 해주는 기능이에요. 프롬프트를 고쳤을 때 실제 요청이 어떻게 보이는지 미리 확인하고, 테스트를 돌린 뒤 생성 타입이 바뀌었는지 살펴보는 흐름이에요.
+개발 도구도 이 방향에 맞춰져 있어요. VSCode/Cursor 확장은 문법 하이라이팅, testing playground, prompt preview, 저장 시 generate 실행 같은 기능을 제공해요. 운영 중 자동 복구를 돕는다기보다 개발할 때 빠르게 피드백을 받도록 해주는 기능이에요. 프롬프트를 고쳤을 때 실제 요청이 어떻게 보이는지 미리 확인하고 테스트를 돌린 뒤 생성 타입이 바뀌었는지 살펴보는 흐름이에요.
 
-baml_client 문서에 따르면 생성 클라이언트는 LLM endpoint 호출, 출력 파싱, 깨진 JSON 보정, 타입 있는 객체 반환, 에러 처리를 맡아요. TypeScript 코드에서 수동 parser를 줄일 수 있다는 뜻이지만 에러 처리의 경계도 달라져요. 기존에는 DailyPlanOutputParser가 던진 예외를 application layer가 잡았다면, BAML을 도입한 뒤에는 생성 클라이언트의 실패를 어떤 도메인 예외로 감쌀지 다시 정해야 해요.
+baml_client 문서에 따르면 생성 클라이언트는 LLM endpoint 호출, 출력 파싱, 깨진 JSON 보정, 타입 있는 객체 반환, 에러 처리를 맡아요. TypeScript 코드에서 수동 parser를 줄일 수 있다는 뜻이지만 에러 처리의 경계도 달라져요. 기존에는 DailyPlanOutputParser가 던진 예외를 application layer가 잡았다면 BAML을 도입한 뒤에는 생성 클라이언트의 실패를 어떤 도메인 예외로 감쌀지 다시 정해야 해요.
 
 | 구분 | 기존 수동 parser 중심 | BAML 함수 중심 |
 | --- | --- | --- |
@@ -103,7 +103,7 @@ baml_client 문서에 따르면 생성 클라이언트는 LLM endpoint 호출, �
 
 ## 지금은 v0 문서와 v1 베타 포지셔닝을 분리해서 읽어야 한다
 
-BAML을 검토할 때 가장 주의해야 할 점은 서로 다른 세대의 문서가 섞여 있다는 거예요. docs.boundaryml.com의 baml_client markdown에는 이 사이트가 BAML v0 legacy DSL을 문서화하고 있으며, BAML v1은 별도의 public beta 언어라는 notice가 붙어 있어요. 홈페이지와 GitHub README는 “programming language for agents”라는 더 큰 포지션을 내세워요.
+BAML을 검토할 때 가장 주의해야 할 점은 서로 다른 세대의 문서가 섞여 있다는 거예요. docs.boundaryml.com의 baml_client markdown에는 이 사이트가 BAML v0 legacy DSL을 문서화하고 있으며 BAML v1은 별도의 public beta 언어라는 notice가 붙어 있어요. 홈페이지와 GitHub README는 “programming language for agents”라는 더 큰 포지션을 내세워요.
 
 이 차이는 사소하지 않아요. TypeScript 프로젝트에 당장 붙일 때 필요한 건 v0 스타일의 .baml 함수, baml_src, baml_client, baml-cli generate 흐름이에요. 홈페이지의 v1 설명은 no any, typed errors, green threads, observability, agent-first tooling 같은 더 넓은 언어 비전까지 담고 있어요. 둘을 섞어 읽으면 “지금 TypeScript 백엔드에 설치하면 이 모든 언어 기능을 바로 쓰는가”라는 오해가 생겨요.
 

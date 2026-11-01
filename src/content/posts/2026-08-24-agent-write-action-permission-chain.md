@@ -5,11 +5,11 @@ pubDatetime: 2026-08-24T19:08:00+09:00
 category: backend
 ---
 
-Slack 기반 에이전트가 read-only 도구를 넘어 외부 시스템까지 바꾸기 시작하면 봇 토큰만으로는 부족해요. user → agent → tool로 이어지는 권한 체인을 설계해야 하죠. 에이전트를 독립된 실행 주체로 식별하고, 각 행위에 필요한 위임 범위와 감사 맥락도 끝까지 보존해야 해요. 아래는 관련 표준 draft와 제품 문서를 읽고 제 시스템 구조에 대보며 정리한 설계안이에요. 코드로 옮겨 돌려본 단계는 아직 아니고요. 사용자 한 명이 Slack 워크스페이스 하나에서 쓰는 단일 구성이라, 여러 조직이 한 시스템을 나눠 쓰거나 테넌트가 갈리는 환경에서 무엇이 달라지는지는 이 글이 보여주지 못해요.
+Slack 기반 에이전트가 read-only 도구를 넘어 외부 시스템까지 바꾸기 시작하면 봇 토큰만으로는 부족해요. user → agent → tool로 이어지는 권한 체인을 설계해야 하죠. 에이전트를 독립된 실행 주체로 식별하고 각 행위에 필요한 위임 범위와 감사 맥락도 끝까지 보존해야 해요. 아래는 관련 표준 draft와 제품 문서를 읽고 제 시스템 구조에 대보며 정리한 설계안이에요. 코드로 옮겨 돌려본 단계는 아직 아니고요. 사용자 한 명이 Slack 워크스페이스 하나에서 쓰는 단일 구성이라, 여러 조직이 한 시스템을 나눠 쓰거나 테넌트가 갈리는 환경에서 무엇이 달라지는지는 이 글이 보여주지 못해요.
 
 ## Write action이 만드는 새로운 문제
 
-/today는 오늘 할 일을 정리하고 /review-pr은 PR diff를 읽으며 /worklog는 업무 로그 초안을 만드는데, 이 단계들은 대부분 read-only 흐름이에요. 실패해도 잘못된 답변 하나가 남을 뿐, 외부 시스템의 상태가 직접 바뀌지는 않아요.
+/today는 오늘 할 일을 정리하고 /review-pr은 PR diff를 읽으며 /worklog는 업무 로그 초안을 만드는데 이 단계들은 대부분 read-only 흐름이에요. 실패해도 잘못된 답변 하나가 남을 뿐, 외부 시스템의 상태가 직접 바뀌지는 않아요.
 
 에이전트가 GitHub issue에 라벨을 붙이고 PR에 코멘트를 남기면 상황이 달라져요. Prisma schema 변경 제안을 바탕으로 migration 성격의 작업을 만들 때나, crawler job을 등록하고 백엔드 워커에게 구현을 위임하는 경우도 마찬가지고요. 모두 외부 상태를 바꾸는 일이니까요.
 
@@ -29,7 +29,7 @@ Slack 기반 에이전트가 read-only 도구를 넘어 외부 시스템까지 �
 
 IETF의 AI Agent Authentication and Authorization draft는 AI agent를 LLM과 도구, 서비스, 리소스를 반복해서 호출하는 workload로 봐요. 여기에 WIMSE(Workload Identity in Multi-System Environments, 여러 시스템에 걸쳐 workload의 신원을 다루는 규격)와 OAuth 2.0 계열, OpenID Shared Signals Framework를 적용하는 방향이에요. 에이전트에는 안정적인 identifier와 credential을 주고, 사용자를 대신할 때는 delegation context도 보존해야 한다는 거죠.
 
-여기까지가 draft에 적힌 내용이고, 아래는 그걸 제 시스템에 대본 제 해석이에요. 권한 모델은 "사용자가 승인했으니 worker가 아무 때나 쓴다"에서 "이 agent identity가 받은 특정 위임 범위에서 이번 행위를 수행한다"로 바뀌어야 한다고 봐요. 그 위임은 사용자 또는 시스템에서 받은 것이어야 하잖아요.
+여기까지가 draft에 적힌 내용이고 아래는 그걸 제 시스템에 대본 제 해석이에요. 권한 모델은 "사용자가 승인했으니 worker가 아무 때나 쓴다"에서 "이 agent identity가 받은 특정 위임 범위에서 이번 행위를 수행한다"로 바뀌어야 한다고 봐요. 그 위임은 사용자 또는 시스템에서 받은 것이어야 하잖아요.
 
 ## 에이전트를 IAM의 대상으로 다루기
 
@@ -59,13 +59,13 @@ AIMS가 당장 별도 서버를 도입하라는 뜻은 아니에요. 도메인 �
 
 ### Entra Agent ID 는 이걸 제품으로 구현했다
 
-Microsoft Entra Agent ID는 agent identity를 일반 사용자나 app registration(사람이 아닌 애플리케이션을 디렉터리에 등록해 둔 것)과 구분해요. agent identity는 자체 credential이 없는 특별한 service principal(디렉터리 안에서 애플리케이션이 권한을 받는 계정)이고, 같은 종류의 에이전트가 공유하는 템플릿인 agent identity blueprint가 대신 token을 얻어요. accountable human 또는 group을 뜻하는 sponsor도 두고요.
+Microsoft Entra Agent ID는 agent identity를 일반 사용자나 app registration(사람이 아닌 애플리케이션을 디렉터리에 등록해 둔 것)과 구분해요. agent identity는 자체 credential이 없는 특별한 service principal(디렉터리 안에서 애플리케이션이 권한을 받는 계정)이고 같은 종류의 에이전트가 공유하는 템플릿인 agent identity blueprint가 대신 token을 얻어요. accountable human 또는 group을 뜻하는 sponsor도 두고요.
 
 권한 면에서는 Global Administrator와 Privileged Role Administrator를 차단해요. User Administrator 같은 고위험 directory role과 custom role, role-assignable group membership도 제한하고요. 이 목록은 Entra Agent ID 문서의 「Authorization in Microsoft Entra Agent ID」 페이지에 그대로 적혀 있어요. 제가 읽기에 이건 에이전트에 sponsor와 권한 제한, 조건부 접근, 감사까지 갖춘 별도의 수명주기가 필요하다는 이야기예요. 벤더 기능을 그대로 쓰지 않더라도 이런 원칙은 가져올 수 있어요.
 
 ## Delegation chaining은 맥락을 다시 표현한다
 
-OAuth Identity and Authorization Chaining Across Domains draft는 여러 trust domain을 지나는 요청에서 identity와 authorization 정보를 보존하는 메커니즘이에요. trust domain은 같은 authorization server(토큰을 발급하며 누구에게 무엇을 허용할지 판정하는 서버)의 판단을 그대로 믿기로 약속한 시스템의 묶음이에요. 제 시스템으로 옮기면 Slack 워크스페이스와 제 백엔드, GitHub이 각각 다른 trust domain이고요. 뒤에 나올 Transaction Tokens가 한 trust domain **안에서** 호출을 묶는 장치라면, 이 draft는 trust domain과 trust domain **사이를** 잇는 장치예요. access token 하나를 끝까지 릴레이하지 말고 경계를 넘을 때마다 맥락을 다시 표현하라는 것이 이 문서가 정한 방식이고요.
+OAuth Identity and Authorization Chaining Across Domains draft는 여러 trust domain을 지나는 요청에서 identity와 authorization 정보를 보존하는 메커니즘이에요. trust domain은 같은 authorization server(토큰을 발급하며 누구에게 무엇을 허용할지 판정하는 서버)의 판단을 그대로 믿기로 약속한 시스템의 묶음이에요. 제 시스템으로 옮기면 Slack 워크스페이스와 제 백엔드, GitHub이 각각 다른 trust domain이고요. 뒤에 나올 Transaction Tokens가 한 trust domain **안에서** 호출을 묶는 장치라면 이 draft는 trust domain과 trust domain **사이를** 잇는 장치예요. access token 하나를 끝까지 릴레이하지 말고 경계를 넘을 때마다 맥락을 다시 표현하라는 것이 이 문서가 정한 방식이고요.
 
 요청이 domain A의 authorization server에서 시작한다고 해볼게요. domain B의 protected resource, 그러니까 유효한 토큰이 있어야 접근할 수 있는 보호된 자원에 도달해도 원래 사용자가 누구였는지, 어떤 authorization을 받았고 어느 중간 resource server를 거쳤는지를 알 수 있어야 해요.
 
@@ -101,11 +101,11 @@ Cache-Control: no-cache, no-store
 }
 ```
 
-access token이 아닌 grant가 왜 `access_token` 필드로 오는지가 먼저 걸려요. RFC 8693은 token exchange 응답을 정의하면서 `access_token`이라는 이름은 역사적인 이유로 쓰는 것이고 발급된 토큰이 OAuth access token일 필요는 없다고 못 박아 둬요. 그러니 이 필드에 실제로 담겨 오는 건 domain B에 제시할 JWT authorization grant예요. `token_type`이 `N_A`인 것도 같은 대목에서 설명돼요. 발급된 토큰이 access token이 아니거나 access token으로 쓸 수 없으면, OAuth의 `token_type` 구분이 이 맥락에 해당하지 않는다는 뜻으로 `N_A`를 쓴다고요.
+access token이 아닌 grant가 왜 `access_token` 필드로 오는지가 먼저 걸려요. RFC 8693은 token exchange 응답을 정의하면서 `access_token`이라는 이름은 역사적인 이유로 쓰는 것이고 발급된 토큰이 OAuth access token일 필요는 없다고 못 박아 둬요. 그러니 이 필드에 실제로 담겨 오는 건 domain B에 제시할 JWT authorization grant예요. `token_type`이 `N_A`인 것도 같은 대목에서 설명돼요. 발급된 토큰이 access token이 아니거나 access token으로 쓸 수 없으면 OAuth의 `token_type` 구분이 이 맥락에 해당하지 않는다는 뜻으로 `N_A`를 쓴다고요.
 
-나머지 필드는 이름 그대로예요. `resource`는 대상 authorization server를, `subject_token`은 근거가 된 token을 뜻하고, `issued_token_type`은 결과물의 유형, `expires_in`은 수명을 나타내요. `expires_in`의 단위는 초라서 이 grant는 60초짜리예요. 뒤에 나올 Txn-Token 예시는 `exp`에서 `iat`를 뺀 360초 수명인데, 하나는 domain B에서 access token으로 바꾸는 그 순간에만 필요한 grant고 다른 하나는 요청 하나가 call chain을 다 지나갈 동안 실려 다니는 증표예요. 쓰이는 구간이 다르니 수명도 다르게 잡혔다고 읽었어요.
+나머지 필드는 이름 그대로예요. `resource`는 대상 authorization server를, `subject_token`은 근거가 된 token을 뜻하고, `issued_token_type`은 결과물의 유형, `expires_in`은 수명을 나타내요. `expires_in`의 단위는 초라서 이 grant는 60초짜리예요. 뒤에 나올 Txn-Token 예시는 `exp`에서 `iat`를 뺀 360초 수명인데 하나는 domain B에서 access token으로 바꾸는 그 순간에만 필요한 grant고 다른 하나는 요청 하나가 call chain을 다 지나갈 동안 실려 다니는 증표예요. 쓰이는 구간이 다르니 수명도 다르게 잡혔다고 읽었어요.
 
-Slack → backend → GitHub 체인에 그대로 복사할 API는 아니지만, 중간 호출마다 맥락을 새로 포장하고 검증하는 설계 방향은 적용할 수 있어요.
+Slack → backend → GitHub 체인에 그대로 복사할 API는 아니지만 중간 호출마다 맥락을 새로 포장하고 검증하는 설계 방향은 적용할 수 있어요.
 
 ## Transaction token으로 한 번의 행위를 묶기
 
@@ -115,7 +115,7 @@ Slack → backend → GitHub 체인에 그대로 복사할 API는 아니지만, 
 
 Txn-Token은 OAuth access token이나 authentication credential이 아니에요. trust domain 내부의 downstream workload가 후속 호출을 authorize할 때 쓰죠. Txn-Token을 쓰는 각 trust domain에는 정확히 하나의 logical Transaction Token Service가 있어야 하고요. 이건 Transaction Tokens draft가 MUST로 못 박은 요구사항이에요.
 
-이 개념을 적용하면 worker queue의 payload에 장기 refresh token을 넣지 않아도 될 것 같아요. 문서를 읽고 우리 큐 구조에 대본 판단이고, 실제로 바꿔 돌려본 것은 아니에요.
+이 개념을 적용하면 worker queue의 payload에 장기 refresh token을 넣지 않아도 될 것 같아요. 문서를 읽고 우리 큐 구조에 대본 판단이고 실제로 바꿔 돌려본 것은 아니에요.
 
 ### 토큰 안에는 무엇이 들어가나
 
@@ -167,17 +167,17 @@ grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange
 &request_details=...
 ```
 
-이 요청은 Txn-Token 하나를 받아 오는 호출이에요. `grant_type`과 `subject_token`은 앞의 token exchange와 같은 자리인데, `requested_token_type`에 txn_token을 적어 일반 access token 말고 Txn-Token을 달라고 요청하는 점이 달라요. 생략부호로 남은 두 자리에는 draft가 정의한 JSON 객체가 들어가요. `request_context`에는 이 transaction의 맥락이 들어가는데, 발급된 토큰의 `rctx`가 될 호출자 IP나 인증 수단 같은 값이에요. `request_details`에는 요청 자체의 세부 정보가 들어가고, Transaction Token Service는 이 값에 자기가 가진 정보를 합쳐 `tctx`를 만들어요. 제 시스템으로 옮기면 `request_context`에는 Slack interaction의 사용자와 채널, 트리거 종류가 들어가고 `request_details`에는 "PR #123에 리뷰 코멘트를 단다" 같은 이번 행위의 대상과 동작이 들어갈 자리예요.
+이 요청은 Txn-Token 하나를 받아 오는 호출이에요. `grant_type`과 `subject_token`은 앞의 token exchange와 같은 자리인데, `requested_token_type`에 txn_token을 적어 일반 access token 말고 Txn-Token을 달라고 요청하는 점이 달라요. 생략부호로 남은 두 자리에는 draft가 정의한 JSON 객체가 들어가요. `request_context`에는 이 transaction의 맥락이 들어가는데 발급된 토큰의 `rctx`가 될 호출자 IP나 인증 수단 같은 값이에요. `request_details`에는 요청 자체의 세부 정보가 들어가고, Transaction Token Service는 이 값에 자기가 가진 정보를 합쳐 `tctx`를 만들어요. 제 시스템으로 옮기면 `request_context`에는 Slack interaction의 사용자와 채널, 트리거 종류가 들어가고 `request_details`에는 "PR #123에 리뷰 코멘트를 단다" 같은 이번 행위의 대상과 동작이 들어갈 자리예요.
 
-이번 요청의 context를 token 발급 시점에 함께 넣는 게 핵심이에요. LLM이 중간에 도구를 고른다면 모델의 판단만 기록해서는 부족하고, 그 판단이 어떤 승인과 범위에서 실행됐는지 token 또는 audit record에 남겨야 하거든요.
+이번 요청의 context를 token 발급 시점에 함께 넣는 게 핵심이에요. LLM이 중간에 도구를 고른다면 모델의 판단만 기록해서는 부족하고 그 판단이 어떤 승인과 범위에서 실행됐는지 token 또는 audit record에 남겨야 하거든요.
 
 ## 내부 모델은 표준보다 먼저 준비할 수 있다
 
-이 글이 참고한 문서 네 종은 성숙도가 같지 않아요. OAuth 2.0 Token Exchange인 RFC 8693은 이미 RFC예요. 반면 AI agent auth draft와 identity chaining draft, transaction token draft는 아직 Internet-Draft 단계고, Transaction Tokens는 OAuth WG 문서로 진행 중이에요. 그러니 draft가 바뀔 수 있고, 지금 특정 구현체에 내부 모델을 강하게 결합하면 이후 변화에 끌려갈 수 있다는 뜻이죠.
+이 글이 참고한 문서 네 종은 성숙도가 같지 않아요. OAuth 2.0 Token Exchange인 RFC 8693은 이미 RFC예요. 반면 AI agent auth draft와 identity chaining draft, transaction token draft는 아직 Internet-Draft 단계고, Transaction Tokens는 OAuth WG 문서로 진행 중이에요. 그러니 draft가 바뀔 수 있고 지금 특정 구현체에 내부 모델을 강하게 결합하면 이후 변화에 끌려갈 수 있다는 뜻이죠.
 
-그래서 안 해도 되는 조건부터 넉넉하게 잡아 두려고 해요. read-only 명령만 있고 호출 체인이 짧다면, 또 외부 write action과 장기 worker가 없다면 agent identity 체계를 과하게 만들 필요는 없어요. 개인용 로컬 스크립트나 단일 프로세스 자동화에서 AIMS 전체를 흉내 내면 운영 비용만 늘고, OAuth trust domain을 제대로 나누지 않고 identity chaining이라는 이름만 붙이면 기존 bearer token relay에 로그 필드 몇 개만 더한 수준에 그칠 수 있고요.
+그래서 안 해도 되는 조건부터 넉넉하게 잡아 두려고 해요. read-only 명령만 있고 호출 체인이 짧다면 또 외부 write action과 장기 worker가 없다면 agent identity 체계를 과하게 만들 필요는 없어요. 개인용 로컬 스크립트나 단일 프로세스 자동화에서 AIMS 전체를 흉내 내면 운영 비용만 늘고, OAuth trust domain을 제대로 나누지 않고 identity chaining이라는 이름만 붙이면 기존 bearer token relay에 로그 필드 몇 개만 더한 수준에 그칠 수 있고요.
 
-반대로 해야 하는 조건은 이래요. write action과 장기 worker, 다중 에이전트 위임이 함께 등장하고 외부 SaaS 호출과 사용자별 승인 범위까지 있다면 미리 모델을 잡아야 해요. 그래도 처음부터 완성형 token service를 만들 필요는 없어서, 저는 AgentRun에 actor와 delegation field를 남기고 tool call audit을 분리하고 scope vocabulary를 좁게 정의하는 데서 시작하려고 해요. 특정 라이브러리를 고르는 일보다 내부 도메인 모델을 이 문제의식에 맞추는 일이 먼저니까요.
+반대로 해야 하는 조건은 이래요. write action과 장기 worker, 다중 에이전트 위임이 함께 등장하고 외부 SaaS 호출과 사용자별 승인 범위까지 있다면 미리 모델을 잡아야 해요. 그래도 처음부터 완성형 token service를 만들 필요는 없어서 저는 AgentRun에 actor와 delegation field를 남기고 tool call audit을 분리하고 scope vocabulary를 좁게 정의하는 데서 시작하려고 해요. 특정 라이브러리를 고르는 일보다 내부 도메인 모델을 이 문제의식에 맞추는 일이 먼저니까요.
 
 ## AgentRun을 권한 체인의 진실 원장으로 만들기
 
@@ -189,7 +189,7 @@ Slack 기반 LLM 멀티 에이전트 시스템에서 제가 먼저 바꾸려는 
 - `slack` — 사용자 요청이 들어오는 입구
 - `github` — 실제 write action이 나가는 출구
 
-agent-registry에서는 지금 한 봇으로 뭉뚱그려진 에이전트들을 각각 다른 권한 경계로 나눌 생각이에요. PR을 리뷰하는 agent/code-reviewer, 작업을 분배하는 agent/cto, 구현 계획을 세우는 agent/be, schema 변경을 제안하는 agent/be-schema, issue에 라벨을 붙이는 agent/issue-labeler, 코드를 고치는 agent/be-fix가 필요한 권한은 서로 다르니까요. 특히 PR에 코멘트를 남기는 agent와 schema 변경 제안을 만드는 agent를 같은 credential로 묶으면, 한쪽만 골라 권한을 줄이거나 회수할 수 없어요.
+agent-registry에서는 지금 한 봇으로 뭉뚱그려진 에이전트들을 각각 다른 권한 경계로 나눌 생각이에요. PR을 리뷰하는 agent/code-reviewer, 작업을 분배하는 agent/cto, 구현 계획을 세우는 agent/be, schema 변경을 제안하는 agent/be-schema, issue에 라벨을 붙이는 agent/issue-labeler, 코드를 고치는 agent/be-fix가 필요한 권한은 서로 다르니까요. 특히 PR에 코멘트를 남기는 agent와 schema 변경 제안을 만드는 agent를 같은 credential로 묶으면 한쪽만 골라 권한을 줄이거나 회수할 수 없어요.
 
 agent-run은 실행 단위의 진실 원장이 되어야 해요. 저는 begin → run → finish 라이프사이클과 evidence record에 다음 항목을 더하려고 해요.
 
@@ -204,7 +204,7 @@ agent-run은 실행 단위의 진실 원장이 되어야 해요. 저는 begin �
 
 ### 최초 사용자와 마지막 worker 사이에서 중간 actor가 사라진다
 
-be-chain과 agent/cto에서는 CTO agent가 PM 작업을 BE worker로 분배하고, agent/be는 구현 계획을, diff 초안을 만드는 agent/be-diff-generator나 테스트를 설계하는 agent/be-test는 후속 산출물을 만들어요. 최초 Slack 사용자부터 마지막 worker까지를 단일 run log로 뭉개면 중간 actor가 사라져 누가 무엇을 위임했는지 알 수 없어요. parent-child AgentRun 관계와 delegated scope가 필요한 이유죠.
+be-chain과 agent/cto에서는 CTO agent가 PM 작업을 BE worker로 분배하고 agent/be는 구현 계획을, diff 초안을 만드는 agent/be-diff-generator나 테스트를 설계하는 agent/be-test는 후속 산출물을 만들어요. 최초 Slack 사용자부터 마지막 worker까지를 단일 run log로 뭉개면 중간 actor가 사라져 누가 무엇을 위임했는지 알 수 없어요. parent-child AgentRun 관계와 delegated scope가 필요한 이유죠.
 
 slack과 github는 trust boundary에 가까워요. Slack은 사용자 intent와 interaction context가 들어오는 입구고, GitHub는 실제 write action이 일어나는 외부 resource server죠.
 
@@ -222,7 +222,7 @@ agent/code-reviewer와 agent/issue-labeler, PR 리뷰를 주기적으로 도는 
 
 **확인 환경과 방법.** 로컬 개발 환경에서 Slack 슬래시 커맨드 한 번으로 GitHub write action이 나가는 경로를 끝까지 돌린 다음, 그 실행의 AgentRun 레코드와 tool call audit 레코드만 읽어 위 세 질문에 답해 보려고 해요. 지표는 질문마다 "레코드만으로 답이 나온다 / 안 나온다"의 이진 판정이고요.
 
-**전후 비교의 기준.** 비교 축은 "사고 조사 시 레코드만으로 복원 가능한 항목"으로 두려고 해요. 지금 그 축에서 남는 것은 호출 주체 하나뿐이고, 그마저 bot 또는 backend로만 찍혀요. 바꾼 뒤에는 위에 적은 여섯 항목이 같은 축에 남고요. 다만 이건 항목이 있느냐 없느냐의 이진 비교라 "몇 퍼센트 줄었다" 같은 정량 지표가 아니에요. 항목이 남는다는 것과 그 값이 실제로 맞는다는 것도 다른 이야기라, 값의 정확성은 이 판정으로 증명되지 않아요.
+**전후 비교의 기준.** 비교 축은 "사고 조사 시 레코드만으로 복원 가능한 항목"으로 두려고 해요. 지금 그 축에서 남는 것은 호출 주체 하나뿐이고 그마저 bot 또는 backend로만 찍혀요. 바꾼 뒤에는 위에 적은 여섯 항목이 같은 축에 남고요. 다만 이건 항목이 있느냐 없느냐의 이진 비교라 "몇 퍼센트 줄었다" 같은 정량 지표가 아니에요. 항목이 남는다는 것과 그 값이 실제로 맞는다는 것도 다른 이야기라, 값의 정확성은 이 판정으로 증명되지 않아요.
 
 **실패 경로.** 정상 경로만 보면 부족해서 세 가지를 함께 확인하려고 해요. 증표가 만료된 뒤 들어온 도구 호출이 거절되고 그 거절이 `deniedToolCalls`에 남는지, 같은 `approvalId`로 write action을 두 번 실행했을 때 두 번째가 막히는지, 워커가 재시작된 뒤 재개된 실행이 앞선 AgentRun의 위임 범위를 그대로 이어받는지예요.
 
@@ -248,6 +248,6 @@ agent/code-reviewer와 agent/issue-labeler, PR 리뷰를 주기적으로 도는 
   응답이 `access_token` 필드로 오는 이유, `token_type` 값 `N_A`의 뜻, `expires_in`의 단위가 초라는 사실을 받쳐요.
 - **RFC 7523, JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants** — 2015년 5월, Standards Track. <https://www.rfc-editor.org/rfc/rfc7523.html>
   identity chaining이 JWT authorization grant를 만들 때 쓰는 프로파일이라 「토큰을 릴레이하는 대신 grant로 다시 받는다」 절을 받쳐요.
-- **Microsoft Entra Agent ID 문서** — 「Entra Agent ID 는 이걸 제품으로 구현했다」 절을 받쳐요. 문서 홈은 <https://learn.microsoft.com/en-us/entra/agent-id/> 이고, 본문이 인용한 두 페이지는 아래와 같아요.
+- **Microsoft Entra Agent ID 문서** — 「Entra Agent ID 는 이걸 제품으로 구현했다」 절을 받쳐요. 문서 홈은 <https://learn.microsoft.com/en-us/entra/agent-id/> 이고 본문이 인용한 두 페이지는 아래와 같아요.
   - 「Overview of agent identities in Microsoft Entra」 <https://learn.microsoft.com/en-us/entra/agent-id/agent-identities> — agent identity가 자체 credential 없는 특별한 service principal이라는 것, blueprint가 대신 token을 얻는다는 것, sponsor가 책임지는 사람 또는 그룹이라는 설명이 여기 있어요.
   - 「Authorization in Microsoft Entra Agent ID」 <https://learn.microsoft.com/en-us/entra/agent-id/authorization-agent-id> — Global Administrator와 Privileged Role Administrator, User Administrator를 배정할 수 없다는 것, custom role을 배정할 수 없다는 것, role-assignable group의 멤버가 될 수 없다는 것이 여기 있어요.

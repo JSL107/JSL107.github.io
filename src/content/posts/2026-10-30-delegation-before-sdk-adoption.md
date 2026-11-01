@@ -7,7 +7,7 @@ category: backend
 
 LLM 기반 Slack 봇에서 worker가 늘어나면 라우터의 질문도 “어디로 보낼까?”에서 “보낸 뒤에는 누가 사용자에게 답할까?”로 바뀌어요. 이 글은 현재 운영 중인 Slack 멀티 에이전트 시스템을 점검하려고 OpenAI Agents SDK for TypeScript의 공식 문서와 예제를 읽은 기록이에요. 직접 프로젝트에 붙여 실행한 후기는 아니에요.
 
-사용자가 “오늘 할 일 정리해 줘”라고 하면 계획을 만드는 worker에게 보내고, “이 PR 봐줘”라고 하면 코드 리뷰 worker에게 보내면 돼요. 하지만 여러 결과를 모아 하나의 답으로 만들어야 할 때도 있고, 전문 worker가 다음 대화를 직접 맡는 편이 나을 때도 있어요. 승인이 필요한 명령은 실행 전에 멈췄다가 승인받은 뒤 같은 맥락에서 이어가야 해요.
+사용자가 “오늘 할 일 정리해 줘”라고 하면 계획을 만드는 worker에게 보내고, “이 PR 봐줘”라고 하면 코드 리뷰 worker에게 보내면 돼요. 하지만 여러 결과를 모아 하나의 답으로 만들어야 할 때도 있고 전문 worker가 다음 대화를 직접 맡는 편이 나을 때도 있어요. 승인이 필요한 명령은 실행 전에 멈췄다가 승인받은 뒤 같은 맥락에서 이어가야 해요.
 
 ## worker 호출과 대화 소유권 이전
 
@@ -99,15 +99,15 @@ const handoffObj = handoff(agent, {
 
 SDK는 handoff를 모델에 보여주기 전에 isEnabled를 평가해요. 이를 이용하면 특정 사용자, 채널, 요청 종류에서만 specialist를 보여줄 수 있어요. 권한 없는 사용자가 “배포해 줘”라고 해도 배포 worker 자체를 보여주지 않는 식이에요.
 
-inputFilter로는 다음 agent에게 전달할 history를 조정해요. 지원 기록 조회 worker에게 PR diff 전체가 필요하지 않고, PR 리뷰 worker에게 개인 일정 대화가 필요하지도 않아요. 대화의 주도권을 넘긴다고 이전 대화를 전부 넘길 이유는 없는 거죠. 현재 CLI 기반 라우터에서도 worker를 호출할 때 Slack thread 전체를 넘기는지, 요약한 intent만 넘기는지, 민감한 실행 권한을 worker에게 보여주는지 점검할 수 있어요.
+inputFilter로는 다음 agent에게 전달할 history를 조정해요. 지원 기록 조회 worker에게 PR diff 전체가 필요하지 않고 PR 리뷰 worker에게 개인 일정 대화가 필요하지도 않아요. 대화의 주도권을 넘긴다고 이전 대화를 전부 넘길 이유는 없는 거죠. 현재 CLI 기반 라우터에서도 worker를 호출할 때 Slack thread 전체를 넘기는지, 요약한 intent만 넘기는지, 민감한 실행 권한을 worker에게 보여주는지 점검할 수 있어요.
 
 ## guardrail은 도구 호출 경계에서도 확인해야 한다
 
 Agents SDK의 guardrail은 input, output, tool 세 층으로 나뉘어요. input guardrail은 첫 agent의 입력에서, output guardrail은 최종 출력을 만드는 agent에서 동작해요. 중간에 handoff가 일어나거나 nested agent를 tool로 호출하면 agent-level guardrail만으로는 모든 호출을 감쌀 수 없어요. tool guardrail은 function tool invocation마다 실행 전후에 붙일 수 있어요.
 
-GitHub 조회, Slack 메시지 전송, 재시도 명령, 지원 상태 변경에는 각각 외부 조회나 부작용이 따라요. 그래서 처음 입력만 볼 게 아니라 지금 실행하려는 도구 호출도 확인해야 해요. handoff 뒤에 specialist가 직접 tool을 호출할 수도 있고, manager가 specialist를 tool로 부른 뒤 그 내부에서 다시 tool을 호출할 수도 있어요. PR 읽기, Slack 쓰기, 작업 상태 변경에 같은 정책을 적용해서는 안 돼요.
+GitHub 조회, Slack 메시지 전송, 재시도 명령, 지원 상태 변경에는 각각 외부 조회나 부작용이 따라요. 그래서 처음 입력만 볼 게 아니라 지금 실행하려는 도구 호출도 확인해야 해요. handoff 뒤에 specialist가 직접 tool을 호출할 수도 있고 manager가 specialist를 tool로 부른 뒤 그 내부에서 다시 tool을 호출할 수도 있어요. PR 읽기, Slack 쓰기, 작업 상태 변경에 같은 정책을 적용해서는 안 돼요.
 
-input guardrail을 병렬로 실행하면 guardrail이 검사하는 동안 agent도 실행을 시작할 수 있어 latency가 줄어요. 다만 guardrail이 뒤늦게 tripwire를 걸면 모델 호출이나 일부 tool 실행이 이미 진행됐을 수 있어요. runInParallel: false로 설정하면 guardrail을 마친 뒤 모델을 호출해요. 조회성 Slack 요청에서는 병렬 실행을 받아들일 만하지만, 상태 변경·외부 전송·재시도처럼 권한이나 승인이 필요한 요청에는 fail closed가 더 중요해요.
+input guardrail을 병렬로 실행하면 guardrail이 검사하는 동안 agent도 실행을 시작할 수 있어 latency가 줄어요. 다만 guardrail이 뒤늦게 tripwire를 걸면 모델 호출이나 일부 tool 실행이 이미 진행됐을 수 있어요. runInParallel: false로 설정하면 guardrail을 마친 뒤 모델을 호출해요. 조회성 Slack 요청에서는 병렬 실행을 받아들일 만하지만 상태 변경·외부 전송·재시도처럼 권한이나 승인이 필요한 요청에는 fail closed가 더 중요해요.
 
 ## 승인은 멈춘 run을 이어가는 문제다
 
@@ -134,7 +134,7 @@ const sensitiveTool = tool({
 });
 ```
 
-Slack 업무 봇에서는 메시지 전송, 외부 시스템의 상태 기록, 실패한 실행의 재시도가 여기에 해당해요. nested agent.asTool() 내부에서 요청한 승인도 바깥 run의 interruptions로 올라와요. 사용자는 내부 agent를 몰라도 되고, 애플리케이션은 하나의 승인 UI에서 처리할 수 있어요. 승인받은 뒤에는 state에 결정을 기록하고 원래 root agent로 이어가요.
+Slack 업무 봇에서는 메시지 전송, 외부 시스템의 상태 기록, 실패한 실행의 재시도가 여기에 해당해요. nested agent.asTool() 내부에서 요청한 승인도 바깥 run의 interruptions로 올라와요. 사용자는 내부 agent를 몰라도 되고 애플리케이션은 하나의 승인 UI에서 처리할 수 있어요. 승인받은 뒤에는 state에 결정을 기록하고 원래 root agent로 이어가요.
 
 ```typescript
 result.state.approve(interruption);
@@ -156,7 +156,7 @@ function tool input guardrail은 기본적으로 승인 뒤 실제 tool을 실�
 
 OpenAI Agents SDK for TypeScript는 Node.js 22 이상, Deno, Bun을 지원해요. text와 sandbox agent 예제는 서버 환경의 OPENAI_API_KEY를 전제로 해요. 공식 레포는 provider-agnostic이라고 설명하지만 문서와 기본 경로는 OpenAI API 중심이에요.
 
-현재 시스템은 OpenAI API key를 직접 호출하기보다 ChatGPT와 Claude의 CLI 구독 쿼터를 라우터 뒤에 붙여 실행해요. SDK를 런타임 중심에 바로 넣으면 model-router와 CLI provider 계층이 중복되고, 인증과 실패 처리, fallback 방식도 달라져요.
+현재 시스템은 OpenAI API key를 직접 호출하기보다 ChatGPT와 Claude의 CLI 구독 쿼터를 라우터 뒤에 붙여 실행해요. SDK를 런타임 중심에 바로 넣으면 model-router와 CLI provider 계층이 중복되고 인증과 실패 처리, fallback 방식도 달라져요.
 
 그날 할 일 정리, 업무 로그 작성, PR 영향도 보고서, 여러 평가를 합친 커리어 기록 후보 생성은 manager가 결과를 합치는 방식에 가까워요. 지원 기록을 조회한 뒤 조건을 되묻거나, 휴가 계산에 필요한 값을 묻거나, 진행 상태와 지연 원인을 직접 설명하는 기능은 handoff 후보가 될 수 있어요.
 

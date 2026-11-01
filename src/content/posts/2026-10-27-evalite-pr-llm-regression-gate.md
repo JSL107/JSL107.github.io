@@ -38,13 +38,13 @@ evalite("My Eval", {
 });
 ```
 
-예제의 Hello 자리에 이대리 사용자의 자연어 발화나 PR diff 일부를 넣을 수 있어요. `task`에는 자연어를 어느 작업으로 보낼지 고르는 함수나 diff로 리뷰 초안을 만드는 함수를 넣으면 돼요. `expected`는 정답 문자열일 수도 있고, 반드시 포함해야 할 판단이나 선택해야 할 작업 종류처럼 잘게 나눈 기대값일 수도 있어요.
+예제의 Hello 자리에 이대리 사용자의 자연어 발화나 PR diff 일부를 넣을 수 있어요. `task`에는 자연어를 어느 작업으로 보낼지 고르는 함수나 diff로 리뷰 초안을 만드는 함수를 넣으면 돼요. `expected`는 정답 문자열일 수도 있고 반드시 포함해야 할 판단이나 선택해야 할 작업 종류처럼 잘게 나눈 기대값일 수도 있어요.
 
 공식 사이트에는 v1 beta 안내도 함께 올라와 있어요. v1 빠른 시작은 `pnpm add evalite@beta`를 제시하고 `evalite/scorers`의 `exactMatch`를 쓰는 예제를 보여줘요. 도입할 때는 기존 문서의 `autoevals` 예제를 따를지, beta 문서의 내장 scorer 형태를 따를지 먼저 정해야 해요.
 
 ## 낮은 점수의 원인을 보는 방법
 
-`evalite watch`를 실행하면 eval을 돌린 결과가 sqlite 데이터베이스에 저장되고, localhost UI에서 traces, scores, inputs, outputs를 볼 수 있어요. 안내된 저장 위치는 `node_modules/.evalite`예요.
+`evalite watch`를 실행하면 eval을 돌린 결과가 sqlite 데이터베이스에 저장되고 localhost UI에서 traces, scores, inputs, outputs를 볼 수 있어요. 안내된 저장 위치는 `node_modules/.evalite`예요.
 
 LLM 품질 회귀는 점수만 봐서는 원인을 알기 어려워요. 평균 점수가 82에서 67로 떨어졌다면 어느 입력에서 어떤 중간 호출을 거쳐 어떤 문장이 빠졌는지 봐야 해요. 이대리처럼 Slack 입력, GitHub diff, 이전 실행 기록이 섞이는 시스템이라면 낮은 점수가 모델의 판단 때문인지 입력 스냅샷의 문제인지도 구분해야 하고요.
 
@@ -90,7 +90,7 @@ evalite --threshold=70
 
 Evalite는 운영 중 모든 대화 로그를 수집하거나 대규모 데이터셋과 장기 트렌드를 조직 단위로 관리하는 플랫폼을 대체하지 않아요. 개발자 로컬과 PR 단계에서 쓰는 안전망으로 보는 편이 맞아요.
 
-성숙도도 확인해야 해요. 공식 사이트는 v1 beta를 안내하고, 빠른 시작 문서의 troubleshooting에는 `better-sqlite3` 바인딩 파일을 찾지 못하는 오류가 나와요. 해결책으로 `pnpm rebuild better-sqlite3`, `pnpm approve-builds`를 안내하지만 CI 이미지나 로컬 Node 버전에 따라 네이티브 바인딩 문제가 도입 비용이 될 수 있어요.
+성숙도도 확인해야 해요. 공식 사이트는 v1 beta를 안내하고 빠른 시작 문서의 troubleshooting에는 `better-sqlite3` 바인딩 파일을 찾지 못하는 오류가 나와요. 해결책으로 `pnpm rebuild better-sqlite3`, `pnpm approve-builds`를 안내하지만 CI 이미지나 로컬 Node 버전에 따라 네이티브 바인딩 문제가 도입 비용이 될 수 있어요.
 
 ## 설치 전 만들 기준선
 

@@ -4,7 +4,7 @@ description: "Slack 업무봇에 기능을 더할 때마다 실행 기록과 평
 pubDatetime: 2026-08-23T19:07:00+09:00
 category: backend
 ---
-업무봇에 기능을 하나 더 붙였는데, 실행 기록을 어디에 남길지부터 다시 정하게 된 적 있나요? 저는 Slack에서 도는 개인 업무봇([personal_agents](https://github.com/JSL107/personal_agents))을 만들어 쓰는데, 워커를 추가할 때마다 같은 질문을 반복했어요. 입출력은 어디서 검증하고, 실행 기록은 어떤 단위로 남기고, 품질 점수는 어느 지점에 붙일까. 여기서 **워커**는 Slack 요청 하나를 받아 처리하는 기능 단위예요. 그날 할 일을 정리하는 워커, 업무 로그를 쓰는 워커, 휴가 일수를 계산하는 워커가 각각 하나씩이고요.
+업무봇에 기능을 하나 더 붙였는데 실행 기록을 어디에 남길지부터 다시 정하게 된 적 있나요? 저는 Slack에서 도는 개인 업무봇([personal_agents](https://github.com/JSL107/personal_agents))을 만들어 쓰는데 워커를 추가할 때마다 같은 질문을 반복했어요. 입출력은 어디서 검증하고 실행 기록은 어떤 단위로 남기고, 품질 점수는 어느 지점에 붙일까. 여기서 **워커**는 Slack 요청 하나를 받아 처리하는 기능 단위예요. 그날 할 일을 정리하는 워커, 업무 로그를 쓰는 워커, 휴가 일수를 계산하는 워커가 각각 하나씩이고요.
 
 이 글에서 **agent**는 다음에 무엇을 할지 모델이 그때그때 정하는 실행을, **workflow**는 순서와 데이터 흐름을 사람이 미리 못 박아 둔 실행을 뜻해요. 둘을 가르지 않고 전부 "AI가 처리한다"로 묶어 두면 문제가 생겨요. 결과가 이상할 때 **모델의 판단이 틀린 건지 순서가 잘못된 건지 구분할 수 없거든요.**
 
@@ -14,15 +14,15 @@ category: backend
 
 어떤 도구를 호출할지 미리 정할 수 없는 일이 있어요. 느슨한 자연어 요청이 그런데, 요청을 본 그때라야 판단이 서거든요.
 
-반대로 순서가 이미 정해진 일도 있어요. GitHub에서 assigned task를 가져오고 전일 plan과 사용자 입력을 합쳐 daily plan을 만드는 순서는 비교적 분명하고, PR 리뷰도 diff 수집과 컨텍스트 정리, 리뷰 생성, 근거 검증으로 나눌 수 있거든요.
+반대로 순서가 이미 정해진 일도 있어요. GitHub에서 assigned task를 가져오고 전일 plan과 사용자 입력을 합쳐 daily plan을 만드는 순서는 비교적 분명하고 PR 리뷰도 diff 수집과 컨텍스트 정리, 리뷰 생성, 근거 검증으로 나눌 수 있거든요.
 
-이 모두를 agent라고 부르면 편하지만, 경계를 나누지 않으면 추적과 평가가 어려워져요. 제가 만든 NestJS 서비스에서는 이 문제를 domain, usecase, queue, trace, eval, memory 같은 계층으로 나눠 뒀어요. domain에는 규칙과 타입이, usecase에는 워커 하나가 실제로 밟는 절차가 들어가요. queue는 오래 걸리는 일을 뒤로 미루는 자리고, trace는 실행 기록, eval은 결과 품질 판정, memory는 이전 대화와 선호를 맡고요. 자유도는 높지만 기능이 늘 때마다 실행 저장 방식과 입출력 검증, trace 범위, 평가 점수를 붙일 위치를 다시 정해야 하거든요. 도입부에서 말한 반복이 여기서 나와요.
+이 모두를 agent라고 부르면 편하지만 경계를 나누지 않으면 추적과 평가가 어려워져요. 제가 만든 NestJS 서비스에서는 이 문제를 domain, usecase, queue, trace, eval, memory 같은 계층으로 나눠 뒀어요. domain에는 규칙과 타입이, usecase에는 워커 하나가 실제로 밟는 절차가 들어가요. queue는 오래 걸리는 일을 뒤로 미루는 자리고, trace는 실행 기록, eval은 결과 품질 판정, memory는 이전 대화와 선호를 맡고요. 자유도는 높지만 기능이 늘 때마다 실행 저장 방식과 입출력 검증, trace 범위, 평가 점수를 붙일 위치를 다시 정해야 하거든요. 도입부에서 말한 반복이 여기서 나와요.
 
 ### Mastra 는 그 경계를 어디에 긋나
 
-Mastra에서 눈여겨볼 건 agent, tool, workflow, memory, eval, observability를 한 TypeScript 프로젝트에서 같은 방식으로 정의한다는 점이에요. AI 에이전트와 애플리케이션을 만드는 TypeScript framework를 표방하고, TypeScript로 정의하며 React, Next.js, Node.js 환경에 통합하거나 standalone server로 배포할 수 있어요.
+Mastra에서 눈여겨볼 건 agent, tool, workflow, memory, eval, observability를 한 TypeScript 프로젝트에서 같은 방식으로 정의한다는 점이에요. AI 에이전트와 애플리케이션을 만드는 TypeScript framework를 표방하고 TypeScript로 정의하며 React, Next.js, Node.js 환경에 통합하거나 standalone server로 배포할 수 있어요.
 
-중요한 기준은 agent와 workflow의 차이예요. agent의 단계는 미리 정해지지 않으며, 모델이 어떤 tool을 몇 번 호출하고 언제 멈출지 판단하는 open-ended task에 맞아요. workflow는 순서와 데이터 흐름이 뚜렷해 실행 경로가 정해진 multi-step process에 어울려요. 모델에게 맡긴 결정과 개발자가 명시한 제어 흐름도 이 기준으로 나눌 수 있어요.
+중요한 기준은 agent와 workflow의 차이예요. agent의 단계는 미리 정해지지 않으며 모델이 어떤 tool을 몇 번 호출하고 언제 멈출지 판단하는 open-ended task에 맞아요. workflow는 순서와 데이터 흐름이 뚜렷해 실행 경로가 정해진 multi-step process에 어울려요. 모델에게 맡긴 결정과 개발자가 명시한 제어 흐름도 이 기준으로 나눌 수 있어요.
 
 여기서 **tool**은 모델이 호출할 수 있는 함수 하나를, **primitive**는 프레임워크가 미리 만들어 둔 기본 구성 요소를 가리켜요. 기존 NestJS 구조에서는 agent 실행, workflow 실행, queue job, trace, eval을 각각 직접 설계해요. Mastra는 agent와 workflow를 schema, storage, scorer, observability에 연결하는 primitive로 제시해요. 곧바로 교체하기보다 직접 만든 계층 중 무엇을 framework primitive로 옮길 수 있는지 비교하는 편이 안전해요.
 
@@ -81,11 +81,11 @@ const step1 = createStep({
 })
 ```
 
-두 정의가 닮아 보이지만 부르는 주체가 달라요. tool은 모델이 필요하다고 판단해 골라 부르고, step은 사람이 미리 못 박은 순서가 불러요. 위 두 코드의 `execute` 모양이 다른 것도 그래서인데, tool은 `{ location }`처럼 입력 필드를 바로 받고 step은 `{ inputData }`로 한 겹 감싸 받아요.
+두 정의가 닮아 보이지만 부르는 주체가 달라요. tool은 모델이 필요하다고 판단해 골라 부르고, step은 사람이 미리 못 박은 순서가 불러요. 위 두 코드의 `execute` 모양이 다른 것도 그래서인데 tool은 `{ location }`처럼 입력 필드를 바로 받고 step은 `{ inputData }`로 한 겹 감싸 받아요.
 
-옮긴 건 정의 부분까지예요. `createWorkflow`로 step을 잇는 조립 코드나 agent·scorer를 만드는 코드는 옮기지 않았고, 그래서 뒤에 나오는 `memoryAgent`와 `customStepScorer()`, `generateContent()`도 이 글 안에는 정의가 없어요.
+옮긴 건 정의 부분까지예요. `createWorkflow`로 step을 잇는 조립 코드나 agent·scorer를 만드는 코드는 옮기지 않았고 그래서 뒤에 나오는 `memoryAgent`와 `customStepScorer()`, `generateContent()`도 이 글 안에는 정의가 없어요.
 
-제 봇에 대보면 Slack command 입력, GitHub task 목록, PR diff 요약, 업무 로그 산출물은 LLM에 통째로 던질 문자열이 아니라 검증 가능한 작은 데이터로 나눌 수 있어요. 업무 로그를 쓰는 워커를 예로 들면 지금은 한 번의 모델 호출로 끝나는데, 근거 수집 step과 초안 생성 step으로 쪼갤 수 있어요. 그러면 결과가 나빴을 때 근거가 부족했는지 문장이 나빴는지 나눠 볼 수 있고요.
+제 봇에 대보면 Slack command 입력, GitHub task 목록, PR diff 요약, 업무 로그 산출물은 LLM에 통째로 던질 문자열이 아니라 검증 가능한 작은 데이터로 나눌 수 있어요. 업무 로그를 쓰는 워커를 예로 들면 지금은 한 번의 모델 호출로 끝나는데 근거 수집 step과 초안 생성 step으로 쪼갤 수 있어요. 그러면 결과가 나빴을 때 근거가 부족했는지 문장이 나빴는지 나눠 볼 수 있고요.
 
 정량 근거가 실제로 들어갔는지는 뒤에 나올 scorer가 판단해요. Mastra는 이런 분해를 라이브러리 밖의 운영 관습이 아니라 framework의 기본 표현으로 만든다는 게 차이예요.
 
@@ -93,7 +93,7 @@ const step1 = createStep({
 
 대화를 이어 가려면 지난 메시지를 어딘가 들고 있어야 해요. 그런데 전부 들고 있으면 비용이 커지고, 많이 버리면 지난 요청을 잊어요. 어디서 끊어야 할까요?
 
-Mastra memory는 message history를 append하는 데 그치지 않고 storage provider를 기반으로 삼아요. agent 호출 시 resource와 thread를 넘기면 같은 사용자나 대화 흐름을 이어갈 수 있어요. **resource**는 사용자처럼 오래 유지되는 주체를, **thread**는 그 안의 개별 대화를 가리켜요. thread owner인 resourceId는 생성한 뒤 바꿀 수 없으며, 서로 다른 owner가 같은 thread ID를 재사용해서는 안 돼요. 문서는 재사용하면 조회할 때 오류가 난다고 못 박아요.
+Mastra memory는 message history를 append하는 데 그치지 않고 storage provider를 기반으로 삼아요. agent 호출 시 resource와 thread를 넘기면 같은 사용자나 대화 흐름을 이어갈 수 있어요. **resource**는 사용자처럼 오래 유지되는 주체를, **thread**는 그 안의 개별 대화를 가리켜요. thread owner인 resourceId는 생성한 뒤 바꿀 수 없으며 서로 다른 owner가 같은 thread ID를 재사용해서는 안 돼요. 문서는 재사용하면 조회할 때 오류가 난다고 못 박아요.
 
 ```typescript
 const response = await memoryAgent.generate('Remember my favorite color is blue.', {
@@ -110,7 +110,7 @@ Observational Memory는 긴 대화의 오래된 메시지를 dense observations�
 
 ## eval은 최종 답변이 아니라 중간 단계에 붙는다
 
-Evals는 별도 배치 테스트만 뜻하지 않아요. **scorer**는 출력에 점수를 매기는 자동 채점기인데, agent나 workflow step에 붙여 live evaluation을 수행할 수 있어요. scorer는 model-graded, rule-based, statistical 방식으로 구성하며 보통 0에서 1 사이의 score를 반환해요. step-level scorer는 해당 step의 input과 output을 받아 중간 단계의 품질을 평가해요.
+Evals는 별도 배치 테스트만 뜻하지 않아요. **scorer**는 출력에 점수를 매기는 자동 채점기인데 agent나 workflow step에 붙여 live evaluation을 수행할 수 있어요. scorer는 model-graded, rule-based, statistical 방식으로 구성하며 보통 0에서 1 사이의 score를 반환해요. step-level scorer는 해당 step의 input과 output을 받아 중간 단계의 품질을 평가해요.
 
 ```typescript
 const contentStep = createStep({
@@ -134,7 +134,7 @@ const contentStep = createStep({
 
 `sampling`의 `rate: 1`은 모든 실행을 채점한다는 뜻이에요. 채점도 모델 호출이라 비용이 붙으니, 실제로는 이 비율을 낮춰 일부만 재는 선택지가 있다는 걸 이 필드가 알려줘요.
 
-평가 기준은 구체적이어야 하는데, 업무 로그를 쓰는 워커라면 정량 근거가 들어갔는지, PR 리뷰를 만드는 워커라면 diff와 무관한 지적을 하지 않았는지 보면 돼요. 최종 답변만 읽는 게 아니라 실행 단계마다 품질 신호를 붙이는 구조죠.
+평가 기준은 구체적이어야 하는데 업무 로그를 쓰는 워커라면 정량 근거가 들어갔는지, PR 리뷰를 만드는 워커라면 diff와 무관한 지적을 하지 않았는지 보면 돼요. 최종 답변만 읽는 게 아니라 실행 단계마다 품질 신호를 붙이는 구조죠.
 
 ## observability에서는 span 경계를 먼저 봐야 한다
 
@@ -142,7 +142,7 @@ Slack 응답 하나가 이상하게 나왔을 때, 모델이 잘못 판단한 �
 
 Mastra의 observability는 tracing, logging, metrics, feedback, storage를 한 흐름으로 묶어요. tracing은 agent run, workflow execution, tool call, model interaction을 span으로 기록해요.
 
-실행은 span으로 남고, metrics는 span이 끝날 때 duration, token count, estimated cost를 추출해요. log는 traced context 안에서 trace/span ID와 연결되며, feedback도 trace나 span에 붙일 수 있어요.
+실행은 span으로 남고, metrics는 span이 끝날 때 duration, token count, estimated cost를 추출해요. log는 traced context 안에서 trace/span ID와 연결되며 feedback도 trace나 span에 붙일 수 있어요.
 
 아래 설정은 Observability overview 문서의 예시를 그대로 옮긴 거예요.
 
@@ -202,11 +202,11 @@ export const mastra = new Mastra({
 
 그날 할 일을 정리하는 워커는 사용자의 오늘 입력과 GitHub assigned tasks, 전일 plan을 합쳐 daily plan을 만들어요. 완전히 open-ended하지 않으므로 전체를 agent로 처리하기보다 workflow로 감싸고 일부 판단만 agent에 맡기는 편이 맞아요. task 수집 step과 전일 plan 요약 step 다음에 daily plan 생성 agent step을 두고, 마지막에 결과 검증 scorer를 붙이는 식이죠.
 
-업무 로그를 쓰는 워커는 자연어 품질이 중요하며, 정량 근거 포함 여부는 별도 scorer로 떼어내기 좋아요. PR 리뷰를 만드는 워커라면 diff 입력, 리뷰 후보, 근거 매핑, scorer 결과를 한 trace에 모아 두는 구성이 자연스러워요. 이 기록을 바탕으로 PR diff와 관계없는 리뷰를 판별할 수 있어요.
+업무 로그를 쓰는 워커는 자연어 품질이 중요하며 정량 근거 포함 여부는 별도 scorer로 떼어내기 좋아요. PR 리뷰를 만드는 워커라면 diff 입력, 리뷰 후보, 근거 매핑, scorer 결과를 한 trace에 모아 두는 구성이 자연스러워요. 이 기록을 바탕으로 PR diff와 관계없는 리뷰를 판별할 수 있어요.
 
 반대로 자연어 멘션을 받아 어느 워커로 보낼지 정하는 라우터는 agent 후보에 가까워요. 사용자의 요청이 열려 있어 어떤 워커가 맞는지 그때 판단해야 하거든요.
 
-휴가 일수를 계산하는 워커는 자연어 파라미터 추출에만 LLM을 쓰고 실제 계산은 규칙에 맡겨요. agent로 키우지 않아도 tool이나 workflow step 안에서 작은 LLM 호출만 두면 될 것 같은데, 문서를 보고 그려 본 그림이지 붙여서 확인한 건 아니에요.
+휴가 일수를 계산하는 워커는 자연어 파라미터 추출에만 LLM을 쓰고 실제 계산은 규칙에 맡겨요. agent로 키우지 않아도 tool이나 workflow step 안에서 작은 LLM 호출만 두면 될 것 같은데 문서를 보고 그려 본 그림이지 붙여서 확인한 건 아니에요.
 
 ## Mastra의 primitive는 이미 있는 것들과 겹친다
 
@@ -231,21 +231,21 @@ Mastra는 Node.js-compatible environment에 배포할 수 있어요. standalone 
 | 실행 기록의 중복 | 실행 테이블 1벌 | 도입 후 기록 저장소가 몇 벌인지 |
 | 재시도·재시작 뒤의 기록 수 | 미측정 | 같은 요청을 재시도하거나 서비스를 재시작했을 때 실행 기록과 scorer 결과가 각각 몇 번 쌓이는지 |
 
-넷 중 실행 기록의 중복이 가장 중요한데, 앞의 둘이 좋아져도 기록이 두 벌이 되면 어느 쪽이 정본인지가 새 문제로 생기거든요. 마지막 행을 같이 둔 것도 같은 이유예요. 지금도 retry 정책이 돌고 있어서, 기록이 한 벌로 유지되는지는 재시도와 재시작에서 가장 먼저 깨지거든요. 그래서 도입을 시험한다면 **워커 하나에만 얹어 기록이 한 벌로 유지되는지부터** 보는 게 맞아요.
+넷 중 실행 기록의 중복이 가장 중요한데 앞의 둘이 좋아져도 기록이 두 벌이 되면 어느 쪽이 정본인지가 새 문제로 생기거든요. 마지막 행을 같이 둔 것도 같은 이유예요. 지금도 retry 정책이 돌고 있어서 기록이 한 벌로 유지되는지는 재시도와 재시작에서 가장 먼저 깨지거든요. 그래서 도입을 시험한다면 **워커 하나에만 얹어 기록이 한 벌로 유지되는지부터** 보는 게 맞아요.
 
 ## 마무리
 
 처음 질문은 기능을 더할 때마다 실행 기록과 평가 지점을 다시 정하게 된다는 것이었어요. 원인은 무엇이 모델 판단이고 무엇이 정해진 순서인지 가르지 않은 채 층을 쌓았기 때문이고요.
 
-Mastra의 기준을 빌려 다시 나눠 보니 제 봇에서는 **workflow 후보가 먼저 보였어요.** 그날 할 일을 정리하는 워커와 PR 리뷰를 만드는 워커는 순서가 이미 정해져 있어서, 전체를 모델에 맡기는 대신 순서를 굳히고 판단이 필요한 자리에만 모델을 두는 편이 맞았어요.
+Mastra의 기준을 빌려 다시 나눠 보니 제 봇에서는 **workflow 후보가 먼저 보였어요.** 그날 할 일을 정리하는 워커와 PR 리뷰를 만드는 워커는 순서가 이미 정해져 있어서 전체를 모델에 맡기는 대신 순서를 굳히고 판단이 필요한 자리에만 모델을 두는 편이 맞았어요.
 
 이 정리는 Mastra를 안 쓰기로 해도 남아요. 어느 실행을 agent로 남기고 workflow로 고정할지, 어느 품질을 scorer로 측정할지 정하는 일은 프레임워크 선택보다 앞에 있으니까요. 인증 방식이 안 맞아 model router를 그대로 못 쓴다는 것도 그 정리 덕분에 미리 알았고요.
 
-다음에 해볼 만한 걸 하나 남겨요. 지금 쓰는 봇에서 워커 하나를 골라 **입력과 출력을 schema로 적어 보세요.** 적히지 않는 자리가 있다면 그곳이 모델 판단에 맡긴 부분이고, 전부 적힌다면 그 워커는 workflow로 굳혀도 되는 후보예요.
+다음에 해볼 만한 걸 하나 남겨요. 지금 쓰는 봇에서 워커 하나를 골라 **입력과 출력을 schema로 적어 보세요.** 적히지 않는 자리가 있다면 그곳이 모델 판단에 맡긴 부분이고 전부 적힌다면 그 워커는 workflow로 굳혀도 되는 후보예요.
 
 ## 출처
 
-제품 동작과 제한은 문서 확인 시점과 버전에 따라 달라질 수 있어요. 아래 자료는 2026년 9월 7일에 직접 확인했고, 확인일이 2026년 9월 8일인 뒤쪽 네 행은 글을 고치면서 뒤늦게 확인해 더한 것들이에요. 발행일이 확인일보다 앞선 건 글을 먼저 올린 뒤 출처를 다시 짚었기 때문이에요. Mastra 패키지 버전은 따로 확인하지 않았으니, 아래 설명은 특정 버전에서 확인한 동작이 아니라 그 시점 문서 기준으로 읽어 주세요. 코드 예시는 문서의 것을 그대로 옮겼고, 제 시스템에 대입한 부분은 문서가 아니라 제 판단이에요.
+제품 동작과 제한은 문서 확인 시점과 버전에 따라 달라질 수 있어요. 아래 자료는 2026년 9월 7일에 직접 확인했고 확인일이 2026년 9월 8일인 뒤쪽 네 행은 글을 고치면서 뒤늦게 확인해 더한 것들이에요. 발행일이 확인일보다 앞선 건 글을 먼저 올린 뒤 출처를 다시 짚었기 때문이에요. Mastra 패키지 버전은 따로 확인하지 않았으니, 아래 설명은 특정 버전에서 확인한 동작이 아니라 그 시점 문서 기준으로 읽어 주세요. 코드 예시는 문서의 것을 그대로 옮겼고, 제 시스템에 대입한 부분은 문서가 아니라 제 판단이에요.
 
 | 제목 | 자료 링크 | 본문 주장 대응 | 확인일 |
 | --- | --- | --- | --- |
@@ -259,5 +259,5 @@ Mastra의 기준을 빌려 다시 나눠 보니 제 봇에서는 **workflow 후�
 | AI Agent Observability | [직접 링크](https://mastra.ai/ai-agent-observability) | agent run·tool call·memory 조작을 기록하고 token·latency를 남기는 구조 | 2026-09-07 |
 | Observability | [직접 링크](https://mastra.ai/docs/observability/overview) | Observability 설정의 exporters·spanOutputProcessors·SensitiveDataFilter 구성 예시 | 2026-09-08 |
 | Mastra 홈페이지 | [직접 링크](https://mastra.ai) | AI 에이전트와 앱을 위한 TypeScript framework 표방, agent와 workflow를 기존 React·Next.js·Node.js 앱에 통합하거나 standalone endpoint로 내보내는 구성 | 2026-09-08 |
-| Models overview | [직접 링크](https://mastra.ai/models) | model router가 provider/model 문자열로 모델을 지정하고, 해당 provider의 환경변수를 읽어 요청을 보내는 방식 | 2026-09-08 |
+| Models overview | [직접 링크](https://mastra.ai/models) | model router가 provider/model 문자열로 모델을 지정하고 해당 provider의 환경변수를 읽어 요청을 보내는 방식 | 2026-09-08 |
 | Environment variables | [직접 링크](https://mastra.ai/models/environment-variables) | provider별 model prefix와 필요한 환경변수 이름(OPENAI_API_KEY·ANTHROPIC_API_KEY·GOOGLE_API_KEY) | 2026-09-08 |

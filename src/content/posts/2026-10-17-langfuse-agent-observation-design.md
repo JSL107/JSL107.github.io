@@ -5,19 +5,19 @@ pubDatetime: 2026-10-17T09:00:00+09:00
 category: infra
 ---
 
-Slack 명령 하나가 실패했는데 로그에는 “PM Agent 실행 실패”만 남아 있다면, 운영자는 원시 로그를 다시 뒤져야 해요. GitHub issue 조회가 느렸는지, LLM 호출이 빈 응답을 냈는지, parser가 JSON을 읽지 못했는지, Slack 응답 전송에서 막혔는지 바로 알 수 없으니까요.
+Slack 명령 하나가 실패했는데 로그에는 “PM Agent 실행 실패”만 남아 있다면 운영자는 원시 로그를 다시 뒤져야 해요. GitHub issue 조회가 느렸는지, LLM 호출이 빈 응답을 냈는지, parser가 JSON을 읽지 못했는지, Slack 응답 전송에서 막혔는지 바로 알 수 없으니까요.
 
 이 글은 Langfuse 4 공식 문서, OpenTelemetry 연동 문서, 4 버전 changelog, evaluation 문서, self-hosting 문서와 공식 GitHub 저장소를 읽고 정리한 조사 글이에요. 직접 붙여 운영한 후기는 아니고, 이 시스템에 어디부터 적용할 만할지 판단한 내용도 담았어요.
 
 ## 실행 로그 안의 작업 단위를 봐야 한다
 
-기존 백엔드에서는 보통 request log, job log, domain event, 혹은 AgentRun 같은 실행 레코드를 남겨요. 운영 이력을 기록하기에는 충분한 방식이에요. 누가 어떤 trigger로 어떤 agent를 실행했고, 성공했는지 실패했는지, 최종 output은 무엇이었는지 남길 수 있으니까요.
+기존 백엔드에서는 보통 request log, job log, domain event, 혹은 AgentRun 같은 실행 레코드를 남겨요. 운영 이력을 기록하기에는 충분한 방식이에요. 누가 어떤 trigger로 어떤 agent를 실행했고 성공했는지 실패했는지, 최종 output은 무엇이었는지 남길 수 있으니까요.
 
-LLM 에이전트에서는 “성공”과 “실패” 사이가 그렇게 단순하지 않아요. 응답은 성공했어도 비용이 갑자기 늘 수 있고, 최종 JSON은 parse됐어도 근거가 부실할 수 있어요. GitHub 조회에 성공했지만 diff가 너무 커서 prompt가 잘렸을 수도 있죠. Slack 사용자는 똑같이 “느리다”고 느껴도 실제 병목은 CLI provider, external API, parser, retry step 중 하나일 수 있어요.
+LLM 에이전트에서는 “성공”과 “실패” 사이가 그렇게 단순하지 않아요. 응답은 성공했어도 비용이 갑자기 늘 수 있고 최종 JSON은 parse됐어도 근거가 부실할 수 있어요. GitHub 조회에 성공했지만 diff가 너무 커서 prompt가 잘렸을 수도 있죠. Slack 사용자는 똑같이 “느리다”고 느껴도 실제 병목은 CLI provider, external API, parser, retry step 중 하나일 수 있어요.
 
 Langfuse 4는 이런 중간 단계를 살펴볼 수 있게 해요. trace는 한 요청이나 작업 전체를 묶고, observation은 그 안에서 실제로 벌어진 개별 단계를 나타내요. LLM call, tool call, retrieval, internal step을 observation으로 기록하면 실행을 구성하는 단계를 직접 검색하고 집계할 수 있어요.
 
-Langfuse의 data model에서 trace는 사용자 요청이나 작업 하나를 나타내요. 사용자가 Slack에서 오늘 할 일을 묻고 에이전트가 GitHub assigned task를 읽어 daily plan을 생성했다면, 그 흐름을 하나의 trace로 묶을 수 있어요. 그 안의 Slack handler, GitHub lookup, model routing, CLI completion, parser, response formatting은 각각 observation이 될 수 있죠. observation에는 latency, input, output, metadata, error를 붙일 수 있고, generation 타입에서는 model, token usage, cost 같은 LLM 정보도 다룰 수 있어요.
+Langfuse의 data model에서 trace는 사용자 요청이나 작업 하나를 나타내요. 사용자가 Slack에서 오늘 할 일을 묻고 에이전트가 GitHub assigned task를 읽어 daily plan을 생성했다면 그 흐름을 하나의 trace로 묶을 수 있어요. 그 안의 Slack handler, GitHub lookup, model routing, CLI completion, parser, response formatting은 각각 observation이 될 수 있죠. observation에는 latency, input, output, metadata, error를 붙일 수 있고 generation 타입에서는 model, token usage, cost 같은 LLM 정보도 다룰 수 있어요.
 
 4 버전에서는 trace-level attribute가 각 observation row에도 복사돼요. user_id, session_id, tags, metadata가 trace 루트뿐 아니라 observation마다 붙는 거죠. 덕분에 특정 agentType의 LLM 호출이나 특정 Slack channel에서 발생한 parser 실패, 특정 release 이후 latency가 튄 tool call을 필터링할 수 있어요.
 
@@ -99,19 +99,19 @@ await startActiveObservation(
 );
 ```
 
-이 예시는 OctokitGithubClient의 PR detail 조회나 assigned issue 조회, Slack response 전송 같은 단계와 가까워요. GitHub API 호출은 LLM 품질과 별개로 실패하거나 느려질 수 있어 tool로 분리할 가치가 있어요. 반면 agent/vacation처럼 LLM을 자연어 파라미터 추출에만 쓰고 핵심 계산은 결정론인 모듈이라면, 추출 부분만 generation으로 두고 계산은 일반 span으로 두면 충분해요.
+이 예시는 OctokitGithubClient의 PR detail 조회나 assigned issue 조회, Slack response 전송 같은 단계와 가까워요. GitHub API 호출은 LLM 품질과 별개로 실패하거나 느려질 수 있어 tool로 분리할 가치가 있어요. 반면 agent/vacation처럼 LLM을 자연어 파라미터 추출에만 쓰고 핵심 계산은 결정론인 모듈이라면 추출 부분만 generation으로 두고 계산은 일반 span으로 두면 충분해요.
 
 metadata를 필터와 metric의 기준으로 쓰려면 trace 루트에만 붙여서는 부족해요. 나중에 필터링할 agentType, triggerType, runId 같은 값은 모든 observation에 전파되도록 처음부터 설정해야 해요.
 
 ## 운영 trace를 평가 데이터로 잇기
 
-LLM 시스템의 장애가 늘 exception으로 드러나지는 않아요. 모델이 친절하게 답했지만 내용이 틀릴 수 있고, JSON schema는 맞아도 중요한 근거를 빠뜨릴 수 있어요. Langfuse evaluation은 online과 offline을 함께 다뤄요. production trace에 score를 붙여 품질 추이를 살피고, 실패 사례를 dataset으로 올린 뒤 experiment로 prompt·model·code 변경을 비교해요. CI/CD gate로 회귀를 막는 단계까지 이어져요.
+LLM 시스템의 장애가 늘 exception으로 드러나지는 않아요. 모델이 친절하게 답했지만 내용이 틀릴 수 있고 JSON schema는 맞아도 중요한 근거를 빠뜨릴 수 있어요. Langfuse evaluation은 online과 offline을 함께 다뤄요. production trace에 score를 붙여 품질 추이를 살피고, 실패 사례를 dataset으로 올린 뒤 experiment로 prompt·model·code 변경을 비교해요. CI/CD gate로 회귀를 막는 단계까지 이어져요.
 
 운영 중인 trace에서 실패 사례를 dataset으로 만들 수 있다면 운영과 실험이 같은 데이터 모델을 쓰게 돼요. “어제 Slack에서 이상한 답변이 나왔다”는 사례를 다음 PR에서 같은 입력 세트로 다시 실행하고 threshold를 넘는지 확인하는 식이에요.
 
 이 시스템에서는 agent/code-reviewer, agent/work-reviewer, agent/pm이 먼저 후보고요. 세 모듈 모두 output 품질이 중요하고 같은 입력으로 회귀 평가를 만들 수 있어요. 반면 agent/delay-report처럼 결정론 조회의 비중이 큰 모듈은 LLM 평가보다 SQL/도메인 invariant 테스트가 먼저예요.
 
-Langfuse의 CI/CD experiment 문서는 dataset, evaluator, threshold를 묶어 배포 전 회귀를 막는 흐름을 제시해요. GitHub Actions에서는 langfuse/experiment-action을 사용하고, 실험 코드는 Python 또는 TypeScript로 작성할 수 있어요. TypeScript experiment는 다음과 같은 형태예요.
+Langfuse의 CI/CD experiment 문서는 dataset, evaluator, threshold를 묶어 배포 전 회귀를 막는 흐름을 제시해요. GitHub Actions에서는 langfuse/experiment-action을 사용하고 실험 코드는 Python 또는 TypeScript로 작성할 수 있어요. TypeScript experiment는 다음과 같은 형태예요.
 
 ```typescript
 import type { ExperimentTaskParams, RunnerContext } from "@langfuse/client";
@@ -160,7 +160,7 @@ Langfuse는 오픈소스이고 self-host할 수 있어요. 공식 GitHub 저장�
 
 이 시스템을 개인이나 소규모로 운영한다면 Cloud나 로컬 Docker Compose로 trace 설계를 검증하는 편이 나아요. Slack 메시지, GitHub diff, 업무 로그처럼 민감한 텍스트가 observation input/output에 들어갈 수 있으니 무엇을 저장하지 않을지 먼저 정해야 해요.
 
-Langfuse SDK는 성능을 위해 trace를 동기로 전송하지 않아요. 비동기 batch 전송은 request latency를 줄여주지만, 프로세스가 빨리 종료되면 observation을 잃을 수 있어요. 공식 quickstart에도 short-lived application에서는 shutdown 또는 flush가 필요하다고 나와 있어요. TypeScript quickstart의 종료 처리는 다음 형태예요.
+Langfuse SDK는 성능을 위해 trace를 동기로 전송하지 않아요. 비동기 batch 전송은 request latency를 줄여주지만 프로세스가 빨리 종료되면 observation을 잃을 수 있어요. 공식 quickstart에도 short-lived application에서는 shutdown 또는 flush가 필요하다고 나와 있어요. TypeScript quickstart의 종료 처리는 다음 형태예요.
 
 ```typescript
 import { sdk } from "./instrumentation";
@@ -191,7 +191,7 @@ NestJS HTTP 서버처럼 오래 떠 있는 프로세스라면 종료 hook에서 
 - githubPrOrIssue
 - runId
 
-runId는 기존 DB row와 Langfuse trace를 이어주는 키가 돼요. agentType과 triggerType은 observation을 집계할 때 기본 축이 되고, Slack/GitHub 식별자는 운영자가 실제 사용 장면으로 되돌아가는 데 필요해요. metadata 값 제한과 개인정보 노출 위험이 있으니 긴 Slack thread 원문이나 diff 전체를 metadata에 넣으면 안 돼요.
+runId는 기존 DB row와 Langfuse trace를 이어주는 키가 돼요. agentType과 triggerType은 observation을 집계할 때 기본 축이 되고 Slack/GitHub 식별자는 운영자가 실제 사용 장면으로 되돌아가는 데 필요해요. metadata 값 제한과 개인정보 노출 위험이 있으니 긴 Slack thread 원문이나 diff 전체를 metadata에 넣으면 안 돼요.
 
 첫 적용 후보는 agent/code-reviewer, agent/work-reviewer, agent/pm이에요. 이들은 LLM 호출 결과의 품질이 중요하고 GitHub/Slack/CLI provider/parser가 함께 움직여요. model-router와 github도 공통 하위 모듈이라 함께 감싸면 여러 agent에서 재사용할 수 있어요. 반면 backtest, market-data, paper-trading처럼 도메인 계산이나 외부 데이터 파이프라인 성격이 강한 모듈에는 일반 OpenTelemetry나 metrics dashboard가 더 직접적일 수 있어요.
 

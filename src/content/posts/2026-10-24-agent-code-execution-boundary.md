@@ -7,7 +7,7 @@ category: infra
 
 Slack에서 에이전트에게 PR 리뷰를 맡길 때 diff를 읽는 데서 그치지 않고 의존성을 설치해 테스트까지 돌리려면 실행 공간을 어디에 둘지 정해야 해요. 이 글은 Cloudflare Sandbox, Cloudflare Agents의 Sandbox 도구 문서, E2B의 sandbox와 coding agents 문서, Modal Sandboxes 문서를 바탕으로 지금 만들고 있는 Slack 기반 LLM 멀티 에이전트 시스템의 실행 경계를 검토한 글이에요. 직접 운영해 본 후기는 아니에요.
 
-모델 호출이 실패하면 응답이 비었는지, JSON 파싱이 깨졌는지, 토큰이 만료됐는지처럼 문제를 나눠 볼 수 있어요. 그런데 npm install이 멈추거나 테스트가 무한 루프에 빠지고 패키지 설치 중 외부 네트워크에 접근한다면, 실행 공간을 어디까지 믿을 수 있는지가 문제예요.
+모델 호출이 실패하면 응답이 비었는지, JSON 파싱이 깨졌는지, 토큰이 만료됐는지처럼 문제를 나눠 볼 수 있어요. 그런데 npm install이 멈추거나 테스트가 무한 루프에 빠지고 패키지 설치 중 외부 네트워크에 접근한다면 실행 공간을 어디까지 믿을 수 있는지가 문제예요.
 
 여기에 sandboxed code execution boundary가 필요해요. 에이전트가 만든 코드와 shell command, 패키지 설치, 테스트 실행을 운영 서버나 개발자 로컬이 아닌 격리된 Linux 공간에서 돌리는 경계예요. 기존에는 CLI provider를 보호하려고 임시 HOME을 주고 안전한 환경 변수만 넘기며 prompt를 stdin으로 전달해 프로세스 단위의 오염을 줄였어요. sandbox boundary를 두면 파일시스템·네트워크·프로세스·리소스까지 실행 런타임 밖으로 분리할 수 있어요.
 
@@ -19,7 +19,7 @@ Cloudflare Sandbox에서는 Workers 애플리케이션이 TypeScript API로 격�
 
 이 도구들은 LLM이 일할 작업 공간을 따로 마련해 줘요. 모델 응답은 DB에 남길 수 있지만 node_modules, test log, generated patch, preview server는 DB에 넣기 좋은 데이터가 아니에요. 그런 부산물은 sandbox filesystem에 둘 수 있어요.
 
-CLI provider를 운영할 때 실제 HOME 대신 임시 HOME을 주고, 인증 파일은 필요한 것만 보존하며, prompt를 argv로 넘기지 않고, working directory를 제한할 수 있어요. 그래도 그 프로세스가 실행하는 명령까지 안전해지는 건 아니에요. npm install은 네트워크를 쓰고 test runner는 child process를 만들 수 있으며 빌드 스크립트는 파일을 읽고 써요. repo checkout은 git credential, SSH 설정, package registry 설정과 맞닿아 있고요. safe env는 시작점이지 완성된 boundary는 아니에요.
+CLI provider를 운영할 때 실제 HOME 대신 임시 HOME을 주고, 인증 파일은 필요한 것만 보존하며 prompt를 argv로 넘기지 않고 working directory를 제한할 수 있어요. 그래도 그 프로세스가 실행하는 명령까지 안전해지는 건 아니에요. npm install은 네트워크를 쓰고 test runner는 child process를 만들 수 있으며 빌드 스크립트는 파일을 읽고 써요. repo checkout은 git credential, SSH 설정, package registry 설정과 맞닿아 있고요. safe env는 시작점이지 완성된 boundary는 아니에요.
 
 | 구분 | 기존 CLI 보호 | Sandbox boundary |
 | --- | --- | --- |
@@ -66,7 +66,7 @@ export class CodeAgent extends Agent<Env, { lastOutput?: string }> {
 }
 ```
 
-Slack에서 사용자가 PR 리뷰를 요청하면 DB에는 요청자, 입력, 모델 응답, 실행 상태를 남길 수 있어요. repo checkout, dependency install, test log, diff 파일은 sandbox의 /workspace 아래에 두고요. 사용자에게 보여줄 최종 요약은 DB에서 꺼내도 되지만, 판단 근거를 확인할 증거는 sandbox artifact로 남겨요.
+Slack에서 사용자가 PR 리뷰를 요청하면 DB에는 요청자, 입력, 모델 응답, 실행 상태를 남길 수 있어요. repo checkout, dependency install, test log, diff 파일은 sandbox의 /workspace 아래에 두고요. 사용자에게 보여줄 최종 요약은 DB에서 꺼내도 되지만 판단 근거를 확인할 증거는 sandbox artifact로 남겨요.
 
 Cloudflare 문서의 “Sandbox vs Agent State” 구분도 user-visible progress와 작은 metadata는 agent state에, workspace files·generated code·package installs·logs·artifacts는 sandbox filesystem에 두는 방향이에요. 실행 기록 테이블에는 sandboxId, artifactPath, commandExitCode, sandboxErrorCode 같은 필드를 붙일 수 있어요.
 
@@ -84,7 +84,7 @@ if (result.success) {
 
 이 예시에서는 stdout과 별개로 success, stderr, exitCode를 받는다는 점이 중요해요. 테스트 실패를 모델이나 sandbox의 실패로 볼 수는 없어요. 실행은 성공했지만 command가 non-zero로 끝난 거예요. 반면 command를 시작하지 못했거나 sandbox가 timeout으로 죽었다면 실행 환경이 실패한 거고요. 에이전트 시스템에서는 이 차이를 error code로 남겨야 해요.
 
-BullMQ 같은 queue에서 모든 실패에 같은 retry 정책을 적용하면 안 돼요. sandbox 생성 실패는 재시도할 수 있지만, 네트워크 allowlist 때문에 패키지를 받지 못했다면 재시도해도 같은 문제가 반복될 가능성이 높아요. 테스트 실패는 재시도하기보다 모델이 수정할 때 참고할 근거로 돌려줘야 해요.
+BullMQ 같은 queue에서 모든 실패에 같은 retry 정책을 적용하면 안 돼요. sandbox 생성 실패는 재시도할 수 있지만 네트워크 allowlist 때문에 패키지를 받지 못했다면 재시도해도 같은 문제가 반복될 가능성이 높아요. 테스트 실패는 재시도하기보다 모델이 수정할 때 참고할 근거로 돌려줘야 해요.
 
 네트워크도 작업에 필요한 범위만 열어야 해요. Cloudflare Sandbox의 outbound traffic 문서는 enableInternet = false, allowedHosts, deniedHosts, outbound handler 같은 장치를 제공해요. outbound handler는 sandbox 밖의 Worker runtime에서 실행되므로 secret을 sandbox 안에 직접 넣지 않고 요청에 붙일 수 있어요.
 
@@ -132,7 +132,7 @@ sandbox가 prompt injection까지 막아 주는 것도 아니에요. “README�
 
 이대리처럼 Slack에서 여러 LLM 에이전트를 호출하는 시스템이라고 해서 모든 모듈에 sandbox가 필요한 건 아니에요. 그날 할 일을 정리하거나 업무 로그 초안을 만드는 작업은 대부분 입력을 읽고 텍스트를 합성해요. shell execution이 없는 작업에 sandbox를 붙이면 구조만 복잡해져요.
 
-반면 PR 리뷰, PR 영향 범위 분석, 문서와 코드의 불일치를 찾는 내부 점검은 repo checkout, diff 읽기, 테스트나 lint 실행, artifact 추출과 이어져요. 지금 CLI provider가 안전한 env에서 모델을 호출하는 데 집중한다면, 다음 단계에서는 모델이 제안한 확인 명령을 실행할 장소를 분리해야 해요. 에이전트 실행마다 sandbox ID를 붙이고 DB에는 실행 요약과 command metadata를, sandbox filesystem에는 checkout된 repo와 로그를 두는 방식이에요.
+반면 PR 리뷰, PR 영향 범위 분석, 문서와 코드의 불일치를 찾는 내부 점검은 repo checkout, diff 읽기, 테스트나 lint 실행, artifact 추출과 이어져요. 지금 CLI provider가 안전한 env에서 모델을 호출하는 데 집중한다면 다음 단계에서는 모델이 제안한 확인 명령을 실행할 장소를 분리해야 해요. 에이전트 실행마다 sandbox ID를 붙이고 DB에는 실행 요약과 command metadata를, sandbox filesystem에는 checkout된 repo와 로그를 두는 방식이에요.
 
 웹 페이지를 수집하는 crawler도 Puppeteer로 브라우저를 띄워 외부 사이트를 방문해요. 하지만 여기서 중요한 건 코드 생성 실행보다 browser isolation, network policy, crawl queue 안정성이에요. 단순 크롤링 격리를 위해 같은 boundary를 도입할지는 따로 검토해야 해요. 자연어 멘션 분류, 휴가 잔여 계산, 지원 기록 조회도 주로 DB read/write와 모델 호출의 문제라서 filesystem, package install, background process, preview URL이 핵심 요구는 아니에요.
 

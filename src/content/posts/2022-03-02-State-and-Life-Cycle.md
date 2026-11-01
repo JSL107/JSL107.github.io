@@ -7,9 +7,9 @@ tags: ["summary","react","web","archive"]
 ### 1. State
 
 1. state
-    - React는 뷰의 단위가 components로 구성되고, components를 통해 UI 재 사용이 가능한 여러 조각으로 나누는데 props와 state가 중요 하다. 각 components는 상위에서 하위로 값을 전달하여 사용할 수 있는데 이 때 전달되는 값을 props라고 하고 state는 각 components가지고 있는 개별적인 상태 값이다. props와 state는 일반 JavaScript의 객체로 두 객체 모두 렌더링 결과물에 영향을 주는 정보를 갖고 있지만 변경 가능에 대한 차이가 있다.
+    - React는 뷰의 단위가 components로 구성되고 components를 통해 UI 재 사용이 가능한 여러 조각으로 나누는데 props와 state가 중요 하다. 각 components는 상위에서 하위로 값을 전달하여 사용할 수 있는데 이 때 전달되는 값을 props라고 하고 state는 각 components가지고 있는 개별적인 상태 값이다. props와 state는 일반 JavaScript의 객체로 두 객체 모두 렌더링 결과물에 영향을 주는 정보를 갖고 있지만 변경 가능에 대한 차이가 있다.
     - props는 부모 구성 요소에서 설정한 정보를 포함하여 모두 변경이 불가능한 불변성의 특징을 가지고 있다.
-    - state는 구성 요소가 자체적으로 초기화, 변경 및 사용할 수 있는 정보를 포함하고, setState를 통해 변경이 가능하다.
+    - state는 구성 요소가 자체적으로 초기화, 변경 및 사용할 수 있는 정보를 포함하고 setState를 통해 변경이 가능하다.
 
 1. 코드
 
@@ -120,7 +120,7 @@ tags: ["summary","react","web","archive"]
 ### 2. 생명주기(Life Cycle)
 
 1. 의미 
-    - 생명주기는 React components의 탄생부터 죽음 까지의 단계를 말하는데, 여러 지점에서 개발자가 작업을 할 수 있도록 method를 overriding 할 수 있게 해준다.
+    - 생명주기는 React components의 탄생부터 죽음 까지의 단계를 말하는데 여러 지점에서 개발자가 작업을 할 수 있도록 method를 overriding 할 수 있게 해준다.
     - 이 생명 주기는 클래스 components에서만 해당되고 function components는 생명 주기가 없고 그처럼 동작하는 것이 없다.
     - 생명 주기의 전체 과정
 
